@@ -311,10 +311,11 @@ const FlightSim3D = (() => {
       const shape = new THREE.Shape();
       const c = finMainChord;
       const h = finLen;
+      // Leading Edge starts at (0,0), Trailing Edge at (c,0)
       shape.moveTo(0, 0);
-      shape.lineTo(-c, 0);
-      shape.lineTo(-c * 0.65, h);
-      shape.lineTo(-c * 0.1, h);
+      shape.lineTo(c, 0);
+      shape.lineTo(c * 0.4, h); // meets at apex tip
+      shape.lineTo(c * 0.1, h);
       shape.closePath();
       return new THREE.ExtrudeGeometry(shape, { depth: 0.018, bevelEnabled: false });
     }
@@ -334,17 +335,17 @@ const FlightSim3D = (() => {
 
     scene.add(airframeGroup);
 
-    // Ruddervator flap geometry — wedge matching fin trailing edge
+    // Ruddervator flap geometry — wedge matching fin trailing edge (rear of the fin)
     function createRuddervatorGeo() {
       const shape = new THREE.Shape();
       const c = ruddervatorChord;
       const tHinge = 0.015;  // Matches fin trailing edge thickness
       const tTip = 0.003;
 
-      // Hinge at X=0, TE at X=-c
+      // Hinge at X=0, TE extending backward at X=c (for trailing edge alignment)
       shape.moveTo(0, tHinge / 2);
-      shape.lineTo(-c, tTip / 2);
-      shape.lineTo(-c, -tTip / 2);
+      shape.lineTo(c, tTip / 2);
+      shape.lineTo(c, -tTip / 2);
       shape.lineTo(0, -tHinge / 2);
       shape.closePath();
 
@@ -352,9 +353,9 @@ const FlightSim3D = (() => {
       return new THREE.ExtrudeGeometry(shape, { depth: finLen * 0.95, bevelEnabled: false });
     }
 
-    // Right Ruddervator — pivot positioned at the hinge line
+    // Right Ruddervator — pivot positioned at the hinge line (which is at X = rearX + finMainChord)
     rRuddervatorPivot = new THREE.Group();
-    rRuddervatorPivot.position.set(rearX - finMainChord, -0.05, boomSpacing);
+    rRuddervatorPivot.position.set(rearX + finMainChord, -0.05, boomSpacing);
     rRuddervatorPivot.rotation.x = -finTiltAngle; // Tilted matching the right fin
 
     rRuddervatorMesh = new THREE.Mesh(createRuddervatorGeo(), controlMat.clone());
@@ -365,7 +366,7 @@ const FlightSim3D = (() => {
 
     // Left Ruddervator — mirrored
     lRuddervatorPivot = new THREE.Group();
-    lRuddervatorPivot.position.set(rearX - finMainChord, -0.05, -boomSpacing);
+    lRuddervatorPivot.position.set(rearX + finMainChord, -0.05, -boomSpacing);
     lRuddervatorPivot.rotation.x = finTiltAngle; // Tilted matching the left fin
 
     const lRuddGeo = createRuddervatorGeo();
