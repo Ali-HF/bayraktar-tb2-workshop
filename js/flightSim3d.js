@@ -560,14 +560,27 @@ const FlightSim3D = (() => {
      DISPLAY MODES
      ──────────────────────────────────────────────────────────── */
 
+  let labelGroup = new THREE.Group();
+
   function setDisplayMode(mode) {
     displayMode = mode;
+    
+    // Clear existing labels
+    while (labelGroup.children.length > 0) {
+      labelGroup.remove(labelGroup.children[0]);
+    }
+    scene.remove(labelGroup);
+    labelGroup = new THREE.Group();
+
+    const isLabelMode = (mode === 'label');
+    const visualMode = isLabelMode ? 'xray' : mode;
+
     airframeGroup.traverse(child => {
       if (child.isMesh) {
-        if (mode === 'solid') {
+        if (visualMode === 'solid') {
           child.material.opacity = 1.0; child.material.transparent = false;
           child.material.depthWrite = true; child.material.wireframe = false;
-        } else if (mode === 'xray') {
+        } else if (visualMode === 'xray') {
           child.material.opacity = 0.25; child.material.transparent = true;
           child.material.depthWrite = false; child.material.wireframe = false;
         } else {
@@ -576,9 +589,51 @@ const FlightSim3D = (() => {
         }
       }
     });
+
     electronicsGroup.traverse(child => {
-      if (child.isMesh) child.material.opacity = mode === 'solid' ? 0.7 : 1.0;
+      if (child.isMesh) {
+        child.material.opacity = visualMode === 'solid' ? 0.7 : 1.0;
+        
+        // If label mode, create a floating 3D text label above the component
+        if (isLabelMode && child.userData && child.userData.name) {
+          const sprite = createLabelSprite(child.userData.name, child.position.x, child.position.y + 0.3, child.position.z);
+          labelGroup.add(sprite);
+        }
+      }
     });
+
+    if (isLabelMode) {
+      scene.add(labelGroup);
+    }
+  }
+
+  function createLabelSprite(text, x, y, z) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 380;
+    canvas.height = 48;
+    const ctx = canvas.getContext('2d');
+    
+    // Transparent dark background panel
+    ctx.fillStyle = 'rgba(26, 26, 26, 0.85)';
+    ctx.roundRect(0, 0, 380, 48, 8);
+    ctx.fill();
+    ctx.strokeStyle = '#e8a87c';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Text style
+    ctx.font = 'bold 18px Inter, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, 190, 24);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
+    const sprite = new THREE.Sprite(spriteMat);
+    sprite.position.set(x, y, z);
+    sprite.scale.set(1.2, 0.16, 1);
+    return sprite;
   }
 
   function setIndividualSurface(surface, degVal) {
