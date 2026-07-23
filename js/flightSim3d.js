@@ -334,16 +334,16 @@ const FlightSim3D = (() => {
     airframeGroup.add(lFin);
 
     // Ruddervator flap geometry — wedge matching fin trailing edge (length along Y, thin depth along Z)
+    // Defined counter-clockwise to ensure correct geometry normals/orientation in Three.js
     function createRuddervatorGeo() {
       const shape = new THREE.Shape();
       const c = ruddervatorChord;
       const h = finLen * 0.95;
 
-      // Hinge at X=0, extends backward to X=-c
-      shape.moveTo(0, 0);
-      shape.lineTo(-c, 0);
+      shape.moveTo(0, h);
       shape.lineTo(-c * 0.8, h);
-      shape.lineTo(0, h);
+      shape.lineTo(-c, 0);
+      shape.lineTo(0, 0);
       shape.closePath();
 
       return new THREE.ExtrudeGeometry(shape, { depth: 0.012, bevelEnabled: false });
@@ -484,11 +484,9 @@ const FlightSim3D = (() => {
       angles.rAileron = input.roll * maxDeg;
       angles.lAileron = -input.roll * maxDeg;
 
-      // Pitch + Yaw → Ruddervators
-      // Pitch UP: both deflect UP together
-      // Yaw RIGHT: right UP, left DOWN (differential)
-      angles.rRuddervator = (input.pitch + input.yaw) * maxDeg;
-      angles.lRuddervator = (input.pitch - input.yaw) * maxDeg;
+      // Pitch + Yaw → Ruddervators (Reversed Pitch and Yaw sign conventions)
+      angles.rRuddervator = (-input.pitch - input.yaw) * maxDeg;
+      angles.lRuddervator = (-input.pitch + input.yaw) * maxDeg;
 
       // Clamp
       const clamp = (v) => Math.max(-maxDeg, Math.min(maxDeg, v));
@@ -653,49 +651,11 @@ const FlightSim3D = (() => {
     renderer.setSize(container.clientWidth, container.clientHeight);
   }
 
-  let debugLogged = false;
   function animate() {
     requestAnimationFrame(animate);
     controls.update();
     if (document.getElementById('page-flight-sim')?.classList.contains('page-active')) {
       updateControlInputs();
-    }
-    
-    if (!debugLogged && typeof rFin !== 'undefined' && rRuddervatorMesh) {
-      // Find the rFin mesh in the airframeGroup
-      let rFinMesh = null;
-      airframeGroup.traverse(child => {
-        if (child.isMesh && child.userData && child.userData.name === 'Right Ruddervator (Pitch/Yaw)') {
-          // rRuddervatorMesh
-        }
-        if (child.isMesh && !child.userData.name) {
-          // rFin is the first child mesh without a custom name in the tail area
-          if (child.position.z > 0.5 && child.position.y < 0) {
-            rFinMesh = child;
-          }
-        }
-      });
-
-      if (rFinMesh) {
-        debugLogged = true;
-        rFinMesh.updateMatrixWorld(true);
-        rRuddervatorMesh.updateMatrixWorld(true);
-        console.log("=== rFin World Vertices ===");
-        const finPos = rFinMesh.geometry.attributes.position;
-        const v = new THREE.Vector3();
-        for (let i = 0; i < Math.min(6, finPos.count); i++) {
-          v.fromBufferAttribute(finPos, i);
-          v.applyMatrix4(rFinMesh.matrixWorld);
-          console.log(`Fin Vertex ${i}: x=${v.x.toFixed(3)}, y=${v.y.toFixed(3)}, z=${v.z.toFixed(3)}`);
-        }
-        console.log("=== rRuddervator World Vertices ===");
-        const ruddPos = rRuddervatorMesh.geometry.attributes.position;
-        for (let i = 0; i < Math.min(6, ruddPos.count); i++) {
-          v.fromBufferAttribute(ruddPos, i);
-          v.applyMatrix4(rRuddervatorMesh.matrixWorld);
-          console.log(`Rudd Vertex ${i}: x=${v.x.toFixed(3)}, y=${v.y.toFixed(3)}, z=${v.z.toFixed(3)}`);
-        }
-      }
     }
 
     renderer.render(scene, camera);
