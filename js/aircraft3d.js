@@ -346,28 +346,28 @@ const Aircraft3D = (() => {
       matKey: 'mat_tail'
     };
 
-    // Joined V-tail fins meeting at top center (Closed Apex)
-    // Boom attachment points at Z = ±boomSpacing, Y = -0.05, X = rearX
-    // Apex top point at Z = 0, Y = vTailH - 0.05, X = rearX - vTailC * 0.5
+    // Joined V-Tail fins meeting seamlessly at top center (Closed Apex, zero gap)
     const halfAngle = (vTailAngle / 2) * (Math.PI / 180); // 55°
+    // Exact fin length required so the tips meet at Z = 0:
+    const finLen = boomSpacing / Math.sin(Math.PI / 2 - halfAngle);
 
     function createLowPolyFinGeo() {
       const shape = new THREE.Shape();
       const c = vTailC;
-      const h = Math.sqrt(vTailH * vTailH + boomSpacing * boomSpacing); // length along fin
+      const h = finLen;
       shape.moveTo(0, 0);
       shape.lineTo(c, 0);
-      shape.lineTo(c * 0.6, h);
+      shape.lineTo(c * 0.4, h); // Meets at top apex tip
       shape.lineTo(c * 0.1, h);
       shape.closePath();
 
       const geo = new THREE.ExtrudeGeometry(shape, {
-        depth: 0.015, bevelEnabled: false
+        depth: 0.018, bevelEnabled: false
       });
       return geo;
     }
 
-    // Right V-Tail Fin (from boom to apex)
+    // Right V-Tail Fin (from right boom up to apex at Z = 0)
     const rFinGeo = createLowPolyFinGeo();
     const rFin = new THREE.Mesh(rFinGeo, tailMat);
     rFin.position.set(rearX, -0.05, boomSpacing);
@@ -375,7 +375,7 @@ const Aircraft3D = (() => {
     addEdges(rFin, 0.3);
     tailGroup.add(rFin);
 
-    // Left V-Tail Fin (from boom to apex)
+    // Left V-Tail Fin (from left boom up to apex at Z = 0, meeting right fin with zero gap)
     const lFinGeo = createLowPolyFinGeo();
     const lFin = new THREE.Mesh(lFinGeo, tailMat.clone());
     lFin.position.set(rearX, -0.05, -boomSpacing);
@@ -383,13 +383,6 @@ const Aircraft3D = (() => {
     lFin.scale.z = -1;
     addEdges(lFin, 0.3);
     tailGroup.add(lFin);
-
-    // Horizontal stabilizer joiner bar between boom tips
-    const hBarGeo = new THREE.BoxGeometry(vTailC * 0.8, 0.015, boomSpacing * 2);
-    const hBar = new THREE.Mesh(hBarGeo, tailMat.clone());
-    hBar.position.set(rearX + vTailC * 0.4, -0.05, 0);
-    addEdges(hBar, 0.2);
-    tailGroup.add(hBar);
 
     scene.add(tailGroup);
     partGroups.tail = tailGroup;
