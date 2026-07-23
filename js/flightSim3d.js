@@ -1,12 +1,15 @@
 /* ============================================================
-   Bayraktar TB2 — Interactive Flight Controls & X-Ray Sim (v2)
+   Bayraktar TB2 — Flight Controls & Ruddervator X-Ray Sim (v3)
    ============================================================
-   Corrected Orientation & Independent Surfaces:
+   Mathematically Precise Hinge Alignment & Flight Computer Mixing:
    - Airfoil LE facing forward (+X), TE facing backward (-X)
-   - Ailerons positioned strictly on TRAILING EDGE of wings
-   - Ruddervators positioned strictly on TRAILING EDGE of V-tail fins
-   - Independent surface deflection control for Left/Right Ailerons and Left/Right Ruddervators
-   - Master Flight Stick (Pitch, Roll, Yaw, Throttle) + Individual Surface Controls
+   - Ailerons hinged along trailing edge of 2.5° dihedral wings
+   - Ruddervators hinged along trailing edge of Inverted V-Tail fins
+   - Quaternion vector alignment: flaps lie 100% FLUSH when undeflected
+   - Flight Computer Mixing:
+     * Roll: Right Aileron UP (+), Left Aileron DOWN (-)
+     * Pitch: Both Ruddervators deflect together (UP/DOWN)
+     * Yaw: Ruddervators deflect differentially (Right UP, Left DOWN for Right Yaw)
    ============================================================ */
 
 const FlightSim3D = (() => {
@@ -26,11 +29,11 @@ const FlightSim3D = (() => {
   // Display Mode: 'solid' | 'xray' | 'electronics'
   let displayMode = 'xray';
 
-  // Master Inputs (-1 to +1, Throttle 0 to 1)
+  // Master Flight Controls (-1 to +1, Throttle 0 to 1)
   const input = {
-    pitch: 0,    // Pitch: दोनों Ruddervators Up/Down
-    roll: 0,     // Roll: Right Up / Left Down (Opposite)
-    yaw: 0,      // Yaw: Right Up / Left Down (Differential)
+    pitch: 0,    // Pitch: Both Ruddervators Up/Down together
+    roll: 0,     // Roll: Right Aileron Up / Left Aileron Down
+    yaw: 0,      // Yaw: Ruddervators Differential deflection
     throttle: 0.4
   };
 
@@ -42,9 +45,7 @@ const FlightSim3D = (() => {
     lRuddervator: 0
   };
 
-  // Flag to check if user is overriding with individual surface sliders
   let manualOverride = false;
-
   const S = 0.01; // 1mm = 0.01 units
 
   function init(containerId) {
@@ -167,12 +168,11 @@ const FlightSim3D = (() => {
     addWireframeEdges(podMesh);
     airframeGroup.add(podMesh);
 
-    // Main Wing Section (75% chord, from LE (0,0) extending backward to -c*0.75)
+    // Main Wing Body (75% chord, LE at (0,0) extending backward to -c*0.75)
     function createWingMainGeo() {
       const shape = new THREE.Shape();
-      const c = rootC * 0.75; // Main wing body before aileron
+      const c = rootC * 0.75;
       const t = d.wingThicknessRoot * S;
-      // Airfoil: LE at (0,0), TE extending backwards (-c, 0)
       shape.moveTo(0, 0);
       shape.lineTo(-c * 0.2, t * 0.8);
       shape.lineTo(-c * 0.5, t);
@@ -195,14 +195,12 @@ const FlightSim3D = (() => {
       return geo;
     }
 
-    // Right Wing Main
     const rWingMesh = new THREE.Mesh(createWingMainGeo(), airframeMat);
     rWingMesh.position.set(wingX, 0, fuseW * 0.4);
     rWingMesh.rotation.x = -dihedralRad;
     addWireframeEdges(rWingMesh);
     airframeGroup.add(rWingMesh);
 
-    // Left Wing Main (mirrored)
     const lWingMesh = new THREE.Mesh(createWingMainGeo(), airframeMat);
     lWingMesh.position.set(wingX, 0, -fuseW * 0.4);
     lWingMesh.scale.z = -1;
@@ -227,13 +225,14 @@ const FlightSim3D = (() => {
     addWireframeEdges(lBoom);
     airframeGroup.add(lBoom);
 
-    // Fixed V-Tail Fins (70% chord, LE at rearX extending backward to rearX - vTailC*0.7)
-    const halfAngle = (vTailAngle / 2) * (Math.PI / 180);
+    // Fixed Inverted V-Tail Fins (70% chord)
+    const halfAngle = (vTailAngle / 2) * (Math.PI / 180); // 55°
     const finLen = boomSpacing / Math.sin(Math.PI / 2 - halfAngle);
+    const apexY = -0.05 + finLen * Math.cos(Math.PI / 2 - halfAngle);
 
     function createFixedFinGeo() {
       const shape = new THREE.Shape();
-      const c = vTailC * 0.7; // Fixed part of fin
+      const c = vTailC * 0.7;
       const h = finLen;
       shape.moveTo(0, 0);
       shape.lineTo(-c, 0);
@@ -260,66 +259,86 @@ const FlightSim3D = (() => {
     scene.add(airframeGroup);
 
     // ═══════════════════════════════════════════════════
-    // 2. ARTICULATED CONTROL SURFACES (On Trailing Edges)
+    // 2. ARTICULATED CONTROL SURFACES (Hinged Quaternion Vectors)
     // ═══════════════════════════════════════════════════
     const controlMat = new THREE.MeshStandardMaterial({
-      color: 0xe74c3c, // Vibrant red control surfaces
+      color: 0xe74c3c, // Vibrant red flaps
       roughness: 0.3,
       metalness: 0.2,
       flatShading: true
     });
 
-    const aileronSpan = (halfSpan - fuseW * 0.4) * 0.6; // Outer 60% of wing
+    const aileronSpan = (halfSpan - fuseW * 0.4) * 0.6;
     const aileronChord = rootC * 0.25;
 
-    // Right Aileron Flap (Positioned on Trailing Edge)
+    // --- Right Aileron Pivot ---
     rAileronPivot = new THREE.Group();
-    // Hinge line at X = wingX - rootC * 0.75 (rear trailing edge of main wing)
-    rAileronPivot.position.set(wingX - rootC * 0.75, 0, fuseW * 0.4 + aileronSpan * 0.5);
-    rAileronPivot.rotation.x = -dihedralRad;
+    const rAileronHingeStart = new THREE.Vector3(wingX - rootC * 0.75, 0, fuseW * 0.4 + aileronSpan * 0.2);
+    const rAileronHingeEnd = new THREE.Vector3(
+      wingX - rootC * 0.75,
+      aileronSpan * Math.sin(dihedralRad),
+      fuseW * 0.4 + aileronSpan * 1.2
+    );
+    const rAileronDir = rAileronHingeEnd.clone().sub(rAileronHingeStart).normalize();
+
+    rAileronPivot.position.copy(rAileronHingeStart);
+    rAileronPivot.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), rAileronDir);
 
     const rAileronGeo = new THREE.BoxGeometry(aileronChord, 0.02, aileronSpan);
-    rAileronGeo.translate(-aileronChord * 0.5, 0, 0); // Origin at hinge line, extends backward (-X)
+    rAileronGeo.translate(-aileronChord * 0.5, 0, aileronSpan * 0.5);
     rAileronMesh = new THREE.Mesh(rAileronGeo, controlMat);
     rAileronMesh.userData = { name: 'Right Aileron (Roll Control)' };
     addWireframeEdges(rAileronMesh, 0.4);
     rAileronPivot.add(rAileronMesh);
     scene.add(rAileronPivot);
 
-    // Left Aileron Flap (Positioned on Trailing Edge)
+    // --- Left Aileron Pivot ---
     lAileronPivot = new THREE.Group();
-    lAileronPivot.position.set(wingX - rootC * 0.75, 0, -(fuseW * 0.4 + aileronSpan * 0.5));
-    lAileronPivot.rotation.x = dihedralRad;
+    const lAileronHingeStart = new THREE.Vector3(wingX - rootC * 0.75, 0, -(fuseW * 0.4 + aileronSpan * 0.2));
+    const lAileronHingeEnd = new THREE.Vector3(
+      wingX - rootC * 0.75,
+      aileronSpan * Math.sin(dihedralRad),
+      -(fuseW * 0.4 + aileronSpan * 1.2)
+    );
+    const lAileronDir = lAileronHingeEnd.clone().sub(lAileronHingeStart).normalize();
+
+    lAileronPivot.position.copy(lAileronHingeStart);
+    lAileronPivot.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), lAileronDir);
 
     const lAileronGeo = new THREE.BoxGeometry(aileronChord, 0.02, aileronSpan);
-    lAileronGeo.translate(-aileronChord * 0.5, 0, 0);
+    lAileronGeo.translate(-aileronChord * 0.5, 0, -aileronSpan * 0.5);
     lAileronMesh = new THREE.Mesh(lAileronGeo, controlMat.clone());
     lAileronMesh.userData = { name: 'Left Aileron (Roll Control)' };
     addWireframeEdges(lAileronMesh, 0.4);
     lAileronPivot.add(lAileronMesh);
     scene.add(lAileronPivot);
 
-    // Right Ruddervator Flap (Positioned on Trailing Edge of V-tail fin)
+    // --- Right Ruddervator Pivot (Along angled fin hinge line) ---
     rRuddervatorPivot = new THREE.Group();
+    const rHingeStart = new THREE.Vector3(rearX - vTailC * 0.7, -0.05, boomSpacing);
+    const rHingeEnd = new THREE.Vector3(rearX - vTailC * 0.7, apexY, 0);
+    const rHingeDir = rHingeEnd.clone().sub(rHingeStart).normalize();
+
+    rRuddervatorPivot.position.copy(rHingeStart);
+    rRuddervatorPivot.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), rHingeDir);
+
     const ruddervatorChord = vTailC * 0.3;
-    const ruddervatorHingeX = rearX - vTailC * 0.7;
-
-    rRuddervatorPivot.position.set(ruddervatorHingeX, -0.05, boomSpacing);
-    rRuddervatorPivot.rotation.x = -(Math.PI / 2 - halfAngle);
-
-    const ruddervatorGeo = new THREE.BoxGeometry(ruddervatorChord, 0.018, finLen * 0.9);
-    ruddervatorGeo.translate(-ruddervatorChord * 0.5, 0, finLen * 0.45); // Extends backward (-X)
+    const ruddervatorGeo = new THREE.BoxGeometry(ruddervatorChord, 0.018, finLen);
+    ruddervatorGeo.translate(-ruddervatorChord * 0.5, 0, finLen * 0.5);
     rRuddervatorMesh = new THREE.Mesh(ruddervatorGeo, controlMat.clone());
     rRuddervatorMesh.userData = { name: 'Right Ruddervator (Pitch/Yaw Control)' };
     addWireframeEdges(rRuddervatorMesh, 0.4);
     rRuddervatorPivot.add(rRuddervatorMesh);
     scene.add(rRuddervatorPivot);
 
-    // Left Ruddervator Flap (Positioned on Trailing Edge of V-tail fin)
+    // --- Left Ruddervator Pivot (Along angled fin hinge line) ---
     lRuddervatorPivot = new THREE.Group();
-    lRuddervatorPivot.position.set(ruddervatorHingeX, -0.05, -boomSpacing);
-    lRuddervatorPivot.rotation.x = (Math.PI / 2 - halfAngle);
-    lRuddervatorPivot.scale.z = -1;
+    const lHingeStart = new THREE.Vector3(rearX - vTailC * 0.7, -0.05, -boomSpacing);
+    const lHingeEnd = new THREE.Vector3(rearX - vTailC * 0.7, apexY, 0);
+    const lHingeDir = lHingeEnd.clone().sub(lHingeStart).normalize();
+
+    lRuddervatorPivot.position.copy(lHingeStart);
+    lRuddervatorPivot.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), lHingeDir);
 
     lRuddervatorMesh = new THREE.Mesh(ruddervatorGeo.clone(), controlMat.clone());
     lRuddervatorMesh.userData = { name: 'Left Ruddervator (Pitch/Yaw Control)' };
@@ -344,7 +363,6 @@ const FlightSim3D = (() => {
     // 3. INTERNAL ELECTRONICS COMPONENTS
     // ═══════════════════════════════════════════════════
 
-    // Motor
     const motorGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.16, 12);
     motorGeo.rotateZ(Math.PI / 2);
     const motorMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8, roughness: 0.2, flatShading: true });
@@ -354,7 +372,6 @@ const FlightSim3D = (() => {
     addWireframeEdges(motor, 0.4);
     electronicsGroup.add(motor);
 
-    // ESC
     const escGeo = new THREE.BoxGeometry(0.25, 0.08, 0.18);
     const escMat = new THREE.MeshStandardMaterial({ color: 0x3498db, metalness: 0.5, roughness: 0.3, flatShading: true });
     const esc = new THREE.Mesh(escGeo, escMat);
@@ -363,7 +380,6 @@ const FlightSim3D = (() => {
     addWireframeEdges(esc, 0.5);
     electronicsGroup.add(esc);
 
-    // Battery
     const batGeo = new THREE.BoxGeometry(0.55, 0.18, 0.24);
     const batMat = new THREE.MeshStandardMaterial({ color: 0x2ecc71, metalness: 0.3, roughness: 0.4, flatShading: true });
     const battery = new THREE.Mesh(batGeo, batMat);
@@ -372,7 +388,6 @@ const FlightSim3D = (() => {
     addWireframeEdges(battery, 0.5);
     electronicsGroup.add(battery);
 
-    // Flight Controller
     const fcGeo = new THREE.BoxGeometry(0.22, 0.06, 0.22);
     const fcMat = new THREE.MeshStandardMaterial({ color: 0x9b59b6, metalness: 0.6, roughness: 0.2, flatShading: true });
     const fc = new THREE.Mesh(fcGeo, fcMat);
@@ -381,7 +396,6 @@ const FlightSim3D = (() => {
     addWireframeEdges(fc, 0.5);
     electronicsGroup.add(fc);
 
-    // Wing Servos
     const servoGeo = new THREE.BoxGeometry(0.12, 0.1, 0.08);
     const servoMat = new THREE.MeshStandardMaterial({ color: 0xf1c40f, metalness: 0.4, roughness: 0.3, flatShading: true });
 
@@ -397,7 +411,6 @@ const FlightSim3D = (() => {
     addWireframeEdges(lServo, 0.5);
     electronicsGroup.add(lServo);
 
-    // Ruddervator Servos
     const rTailServo = new THREE.Mesh(servoGeo.clone(), servoMat.clone());
     rTailServo.position.set(-0.6, -0.05, 0.9);
     rTailServo.userData = { name: 'Right Ruddervator Servo (9g)', info: 'V-tail control' };
@@ -410,7 +423,6 @@ const FlightSim3D = (() => {
     addWireframeEdges(lTailServo, 0.5);
     electronicsGroup.add(lTailServo);
 
-    // Camera Turret
     const gimbalMat = new THREE.MeshStandardMaterial({ color: 0x1abc9c, metalness: 0.7, roughness: 0.2, flatShading: true });
     const gimbal = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), gimbalMat);
     gimbal.position.set(1.9, -0.3, 0);
@@ -462,7 +474,7 @@ const FlightSim3D = (() => {
   }
 
   /* ────────────────────────────────────────────────────────────
-     CONTROL LOGIC & KEYBOARD INPUT
+     CONTROL LOGIC & FLIGHT COMPUTER MIXING
      ──────────────────────────────────────────────────────────── */
 
   const keysPressed = {};
@@ -471,7 +483,7 @@ const FlightSim3D = (() => {
     window.addEventListener('keydown', (e) => {
       if (!document.getElementById('page-flight-sim').classList.contains('page-active')) return;
       keysPressed[e.key.toLowerCase()] = true;
-      manualOverride = false; // Reset override on keypress
+      manualOverride = false;
     });
 
     window.addEventListener('keyup', (e) => {
@@ -505,16 +517,16 @@ const FlightSim3D = (() => {
       if (keysPressed['r'] || keysPressed['shift']) input.throttle = Math.min(1, input.throttle + 0.02);
       if (keysPressed['f'] || keysPressed['control']) input.throttle = Math.max(0, input.throttle - 0.02);
 
-      // Master Calculations:
-      // Ailerons (Roll): Right Aileron deflects UP (+) on right roll, Left Aileron deflects DOWN (-)
+      // --- Flight Computer Surface Mixing ---
+      // Ailerons (Roll): Right Aileron UP (+), Left Aileron DOWN (-)
       angles.rAileron = input.roll * maxDeg;
       angles.lAileron = -input.roll * maxDeg;
 
-      // Ruddervators (Pitch + Yaw):
+      // Ruddervators (Pitch + Yaw Mixing per Wikipedia / Bayraktar TB2 FCS):
       // Pitch UP (+ Pitch input): both ruddervators deflect UP (+)
       // Yaw RIGHT (+ Yaw input): Right ruddervator UP (+), Left ruddervator DOWN (-)
-      angles.rRuddervator = (input.pitch + input.yaw * 0.5) * maxDeg;
-      angles.lRuddervator = (input.pitch - input.yaw * 0.5) * maxDeg;
+      angles.rRuddervator = (input.pitch + input.yaw) * maxDeg;
+      angles.lRuddervator = (input.pitch - input.yaw) * maxDeg;
 
       // Clamp angles to ±25°
       angles.rAileron = Math.max(-maxDeg, Math.min(maxDeg, angles.rAileron));
@@ -523,18 +535,12 @@ const FlightSim3D = (() => {
       angles.lRuddervator = Math.max(-maxDeg, Math.min(maxDeg, angles.lRuddervator));
     }
 
-    // Apply Rotations to 3D Flap Meshes:
-    // Right Aileron (+ angle = trailing edge UP)
-    if (rAileronMesh) rAileronMesh.rotation.z = THREE.MathUtils.degToRad(angles.rAileron);
+    // Apply Deflections along Local Hinge Axes:
+    if (rAileronMesh) rAileronMesh.rotation.y = THREE.MathUtils.degToRad(angles.rAileron);
+    if (lAileronMesh) lAileronMesh.rotation.y = THREE.MathUtils.degToRad(-angles.lAileron);
 
-    // Left Aileron (+ angle = trailing edge UP)
-    if (lAileronMesh) lAileronMesh.rotation.z = THREE.MathUtils.degToRad(-angles.lAileron);
-
-    // Right Ruddervator (+ angle = trailing edge UP)
-    if (rRuddervatorMesh) rRuddervatorMesh.rotation.z = THREE.MathUtils.degToRad(angles.rRuddervator);
-
-    // Left Ruddervator (+ angle = trailing edge UP)
-    if (lRuddervatorMesh) lRuddervatorMesh.rotation.z = THREE.MathUtils.degToRad(-angles.lRuddervator);
+    if (rRuddervatorMesh) rRuddervatorMesh.rotation.y = THREE.MathUtils.degToRad(angles.rRuddervator);
+    if (lRuddervatorMesh) lRuddervatorMesh.rotation.y = THREE.MathUtils.degToRad(-angles.lRuddervator);
 
     // Propeller Rotation
     if (propGroup) propGroup.rotation.x += input.throttle * 0.4;
@@ -551,7 +557,6 @@ const FlightSim3D = (() => {
     elR('sim-l-ruddervator', angles.lRuddervator.toFixed(1) + '°');
     elR('sim-throttle-val', Math.round(input.throttle * 100) + '%');
 
-    // Update Slider Elements if present
     const setSliderVal = (id, val) => { const s = document.getElementById(id); if (s && document.activeElement !== s) s.value = val; };
     setSliderVal('slider-r-aileron', angles.rAileron);
     setSliderVal('slider-l-aileron', angles.lAileron);
@@ -568,7 +573,7 @@ const FlightSim3D = (() => {
   }
 
   /* ────────────────────────────────────────────────────────────
-     DISPLAY MODES & INDIVIDUAL SURFACE CONTROLS
+     DISPLAY MODES & CONTROLS
      ──────────────────────────────────────────────────────────── */
 
   function setDisplayMode(mode) {
