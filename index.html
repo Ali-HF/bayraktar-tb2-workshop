@@ -34,6 +34,7 @@
     <a class="nav-link" href="#performance">Performance</a>
     <a class="nav-link" href="#budget">Budget</a>
     <a class="nav-link" href="#airfoil">Airfoil Sim</a>
+    <a class="nav-link" href="#flight-sim">Flight Controls</a>
   </div>
 
   <div class="nav-actions">
@@ -244,6 +245,13 @@
         <div class="nav-card-text">
           <h3>Airfoil Simulation</h3>
           <p>NACA 4412 streamline animation &amp; CL curve</p>
+        </div>
+      </a>
+      <a class="nav-card" href="#flight-sim">
+        <div class="nav-card-icon" style="background:rgba(231,76,60,0.1); color:#e74c3c;">🎮</div>
+        <div class="nav-card-text">
+          <h3>Flight Controls &amp; X-Ray</h3>
+          <p>Flap deflections, internal electronics &amp; keyboard flight stick</p>
         </div>
       </a>
     </div>
@@ -571,6 +579,111 @@
   </div>
 </section>
 
+<!-- ───────────────────────────────────────────────────────────
+     PAGE 8: FLIGHT CONTROLS & INTERNAL X-RAY SIM
+     ─────────────────────────────────────────────────────────── -->
+<section class="page-section" id="page-flight-sim">
+  <div class="page-header">
+    <h1 class="page-title">Flight Controls <span>&amp; Internal X-Ray Sim</span></h1>
+    <p class="page-subtitle">Interactive 3D simulation of ailerons, V-tail ruddervators, internal electronics layout, and flight control system</p>
+  </div>
+
+  <div class="grid-model" style="grid-template-columns: 280px 1fr 280px;">
+    <!-- Left Panel: Control Surface Telemetry & Modes -->
+    <div class="panel">
+      <div class="panel-header">🕹 Display &amp; Telemetry</div>
+      <div class="panel-body" style="padding:16px;">
+        <div style="margin-bottom:16px;">
+          <div style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:8px;">3D View Mode</div>
+          <div class="btn-group" style="width:100%;">
+            <button class="btn btn-sm" onclick="FlightSim3D.setDisplayMode('solid'); this.parentElement.querySelector('.active')?.classList.remove('active'); this.classList.add('active');">Solid</button>
+            <button class="btn btn-sm active" onclick="FlightSim3D.setDisplayMode('xray'); this.parentElement.querySelector('.active')?.classList.remove('active'); this.classList.add('active');">X-Ray</button>
+            <button class="btn btn-sm" onclick="FlightSim3D.setDisplayMode('electronics'); this.parentElement.querySelector('.active')?.classList.remove('active'); this.classList.add('active');">Wiring</button>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--border-subtle); padding-top:12px; margin-top:12px;">
+          <div style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:10px;">Control Surface Angles</div>
+          
+          <div class="gauge-bar">
+            <div class="gauge-label"><span style="color:#e74c3c;">Right Aileron</span><strong id="sim-r-aileron">0.0°</strong></div>
+          </div>
+          <div class="gauge-bar">
+            <div class="gauge-label"><span style="color:#e74c3c;">Left Aileron</span><strong id="sim-l-aileron">0.0°</strong></div>
+          </div>
+          <div class="gauge-bar">
+            <div class="gauge-label"><span style="color:#e74c3c;">Right Ruddervator</span><strong id="sim-r-ruddervator">0.0°</strong></div>
+          </div>
+          <div class="gauge-bar">
+            <div class="gauge-label"><span style="color:#e74c3c;">Left Ruddervator</span><strong id="sim-l-ruddervator">0.0°</strong></div>
+          </div>
+          <div class="gauge-bar">
+            <div class="gauge-label"><span style="color:#f1c40f;">Motor Throttle</span><strong id="sim-throttle-val">40%</strong></div>
+          </div>
+        </div>
+
+        <!-- Attitude Horizon -->
+        <div style="margin-top:16px; text-align:center;">
+          <div style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:6px;">Attitude Horizon</div>
+          <div style="width:100px; height:100px; border-radius:50%; border:2px solid var(--border-card); margin:0 auto; overflow:hidden; position:relative; background:#111;">
+            <div id="attitude-horizon" style="width:100%; height:50%; background:#2ecc71; position:absolute; top:50%; left:0; transition:transform 0.1s ease;"></div>
+            <div style="position:absolute; top:48%; left:25%; width:50%; height:2px; background:#fff;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center: 3D Flight Simulation Canvas -->
+    <div class="grid-model-center">
+      <div class="model-container" id="flight-sim-3d-container">
+        <div class="model-toolbar">
+          <button class="btn btn-sm btn-accent" onclick="FlightSim3D.resetControls()">↺ Reset Controls</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Panel: Manual Control Sliders & Keyboard Legend -->
+    <div class="panel">
+      <div class="panel-header">🎮 Flight Stick &amp; Keys</div>
+      <div class="panel-body" style="padding:16px;">
+        <div style="margin-bottom:16px;">
+          <div style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:8px;">Manual Sliders</div>
+          
+          <div class="slider-group">
+            <div class="slider-label"><span>Pitch (W / S)</span></div>
+            <input type="range" min="-1" max="1" step="0.05" value="0" oninput="FlightSim3D.setManualInput('pitch', this.value)">
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-label"><span>Roll (A / D)</span></div>
+            <input type="range" min="-1" max="1" step="0.05" value="0" oninput="FlightSim3D.setManualInput('roll', this.value)">
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-label"><span>Yaw (Q / E)</span></div>
+            <input type="range" min="-1" max="1" step="0.05" value="0" oninput="FlightSim3D.setManualInput('yaw', this.value)">
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-label"><span>Throttle (R / F)</span></div>
+            <input type="range" min="0" max="1" step="0.05" value="0.4" oninput="FlightSim3D.setManualInput('throttle', this.value)">
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--border-subtle); padding-top:12px;">
+          <div style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:8px;">⌨ Keyboard Flight Keys</div>
+          <div style="font-size:0.78rem; line-height:1.8; color:var(--text-muted); font-family:var(--font-mono);">
+            <strong style="color:var(--text-primary);">W / S</strong> : Pitch Up / Down<br>
+            <strong style="color:var(--text-primary);">A / D</strong> : Roll Left / Right<br>
+            <strong style="color:var(--text-primary);">Q / E</strong> : Yaw Left / Right<br>
+            <strong style="color:var(--text-primary);">R / F</strong> : Throttle Up / Down
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 </main>
 
 <!-- ════════════════════════════════════════════════════════════
@@ -583,6 +696,7 @@
 <script src="js/aircraft3d.js?v=3"></script>
 <script src="js/charts.js?v=3"></script>
 <script src="js/airfoil.js?v=3"></script>
+<script src="js/flightSim3d.js?v=3"></script>
 
 <script>
 /* ============================================================
@@ -599,6 +713,10 @@
     // Lazy-init 3D model when model page is visited
     if (page.id === 'model' && !document.querySelector('#model-3d-container canvas')) {
       setTimeout(() => Aircraft3D.init('model-3d-container'), 100);
+    }
+    // Lazy-init Flight Control Sim
+    if (page.id === 'flight-sim' && !document.querySelector('#flight-sim-3d-container canvas')) {
+      setTimeout(() => FlightSim3D.init('flight-sim-3d-container'), 100);
     }
     // Lazy-init airfoil sim
     if (page.id === 'airfoil' && !document.querySelector('#airfoil-canvas').getContext) {

@@ -10,7 +10,8 @@ const Router = (() => {
     { id: 'materials',   hash: '#materials',   label: 'Materials' },
     { id: 'performance', hash: '#performance', label: 'Performance' },
     { id: 'budget',      hash: '#budget',      label: 'Budget' },
-    { id: 'airfoil',     hash: '#airfoil',     label: 'Airfoil Sim' }
+    { id: 'airfoil',     hash: '#airfoil',     label: 'Airfoil Sim' },
+    { id: 'flight-sim',  hash: '#flight-sim',  label: 'Flight Controls' }
   ];
 
   let _onNavigate = null;
