@@ -644,35 +644,59 @@
 
     <!-- Right Panel: Manual Control Sliders & Keyboard Legend -->
     <div class="panel">
-      <div class="panel-header">🎮 Flight Stick &amp; Keys</div>
+      <div class="panel-header">🎮 Flight Stick &amp; Surface Controls</div>
       <div class="panel-body" style="padding:16px;">
-        <div style="margin-bottom:16px;">
-          <div style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:8px;">Manual Sliders</div>
+        <div style="margin-bottom:12px;">
+          <div style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:8px;">Master Flight Controls</div>
           
           <div class="slider-group">
             <div class="slider-label"><span>Pitch (W / S)</span></div>
-            <input type="range" min="-1" max="1" step="0.05" value="0" oninput="FlightSim3D.setManualInput('pitch', this.value)">
+            <input type="range" min="-1" max="1" step="0.05" value="0" oninput="FlightSim3D.setMasterInput('pitch', this.value)">
           </div>
 
           <div class="slider-group">
             <div class="slider-label"><span>Roll (A / D)</span></div>
-            <input type="range" min="-1" max="1" step="0.05" value="0" oninput="FlightSim3D.setManualInput('roll', this.value)">
+            <input type="range" min="-1" max="1" step="0.05" value="0" oninput="FlightSim3D.setMasterInput('roll', this.value)">
           </div>
 
           <div class="slider-group">
             <div class="slider-label"><span>Yaw (Q / E)</span></div>
-            <input type="range" min="-1" max="1" step="0.05" value="0" oninput="FlightSim3D.setManualInput('yaw', this.value)">
+            <input type="range" min="-1" max="1" step="0.05" value="0" oninput="FlightSim3D.setMasterInput('yaw', this.value)">
           </div>
 
           <div class="slider-group">
             <div class="slider-label"><span>Throttle (R / F)</span></div>
-            <input type="range" min="0" max="1" step="0.05" value="0.4" oninput="FlightSim3D.setManualInput('throttle', this.value)">
+            <input type="range" min="0" max="1" step="0.05" value="0.4" oninput="FlightSim3D.setMasterInput('throttle', this.value)">
           </div>
         </div>
 
-        <div style="border-top:1px solid var(--border-subtle); padding-top:12px;">
-          <div style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:8px;">⌨ Keyboard Flight Keys</div>
-          <div style="font-size:0.78rem; line-height:1.8; color:var(--text-muted); font-family:var(--font-mono);">
+        <div style="border-top:1px solid var(--border-subtle); padding-top:10px; margin-bottom:12px;">
+          <div style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:8px;">Independent Surface Deflections</div>
+
+          <div class="slider-group">
+            <div class="slider-label"><span>Right Aileron (°):</span></div>
+            <input type="range" id="slider-r-aileron" min="-25" max="25" step="1" value="0" oninput="FlightSim3D.setIndividualSurface('rAileron', this.value)">
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-label"><span>Left Aileron (°):</span></div>
+            <input type="range" id="slider-l-aileron" min="-25" max="25" step="1" value="0" oninput="FlightSim3D.setIndividualSurface('lAileron', this.value)">
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-label"><span>Right Ruddervator (°):</span></div>
+            <input type="range" id="slider-r-ruddervator" min="-25" max="25" step="1" value="0" oninput="FlightSim3D.setIndividualSurface('rRuddervator', this.value)">
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-label"><span>Left Ruddervator (°):</span></div>
+            <input type="range" id="slider-l-ruddervator" min="-25" max="25" step="1" value="0" oninput="FlightSim3D.setIndividualSurface('lRuddervator', this.value)">
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--border-subtle); padding-top:10px;">
+          <div style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:6px;">⌨ Flight Keys</div>
+          <div style="font-size:0.75rem; line-height:1.7; color:var(--text-muted); font-family:var(--font-mono);">
             <strong style="color:var(--text-primary);">W / S</strong> : Pitch Up / Down<br>
             <strong style="color:var(--text-primary);">A / D</strong> : Roll Left / Right<br>
             <strong style="color:var(--text-primary);">Q / E</strong> : Yaw Left / Right<br>

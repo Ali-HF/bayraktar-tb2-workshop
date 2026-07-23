@@ -252,12 +252,12 @@ const Aircraft3D = (() => {
       const shape = new THREE.Shape();
       const c = rootC;
       const t = d.wingThicknessRoot * S;
-      // 6-point low poly airfoil shape
+      // Airfoil profile: Leading Edge at (0,0), Trailing Edge at (-c,0)
       shape.moveTo(0, 0);
-      shape.lineTo(c * 0.2, t * 0.8);
-      shape.lineTo(c * 0.5, t);
-      shape.lineTo(c, 0);
-      shape.lineTo(c * 0.4, -t * 0.25);
+      shape.lineTo(-c * 0.2, t * 0.8);
+      shape.lineTo(-c * 0.5, t);
+      shape.lineTo(-c, 0);
+      shape.lineTo(-c * 0.4, -t * 0.25);
       shape.closePath();
 
       const extrudeSettings = {
@@ -284,7 +284,7 @@ const Aircraft3D = (() => {
     // Right Wing (with +2.5° dihedral)
     const rWingGeo = createLowPolyWingGeo();
     const rWing = new THREE.Mesh(rWingGeo, wingMat);
-    rWing.position.set(wingX - rootC * 0.5, 0, fuseW * 0.4);
+    rWing.position.set(wingX, 0, fuseW * 0.4);
     rWing.rotation.x = -dihedralRad; // Dihedral angle up
     addEdges(rWing, 0.25);
     wingGroup.add(rWing);
@@ -292,7 +292,7 @@ const Aircraft3D = (() => {
     // Left Wing (with +2.5° dihedral, mirrored)
     const lWingGeo = createLowPolyWingGeo();
     const lWing = new THREE.Mesh(lWingGeo, wingMat.clone());
-    lWing.position.set(wingX - rootC * 0.5, 0, -fuseW * 0.4);
+    lWing.position.set(wingX, 0, -fuseW * 0.4);
     lWing.scale.z = -1;
     lWing.rotation.x = dihedralRad; // Dihedral angle up
     addEdges(lWing, 0.25);
