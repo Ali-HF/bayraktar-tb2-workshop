@@ -16,8 +16,9 @@ const AirfoilSim = (() => {
   let camber = 0.04;    // 4%
   let camberPos = 0.4;  // 40%
   let running = false;
+  let visualizationMode = 'particles'; // 'particles' or 'streamlines'
 
-  const NUM_PARTICLES = 180;
+  const NUM_PARTICLES = 600;
   const PARTICLE_SPEED = 2;
 
   /* ── NACA 4-digit profile computation ── */
@@ -152,7 +153,7 @@ const AirfoilSim = (() => {
       y: -1.0 + Math.random() * 2.0,
       age: 0,
       maxAge: 100 + Math.random() * 150,
-      size: 1.5 + Math.random() * 1.5
+      size: 1.2 + Math.random() * 1.5
     };
   }
 
@@ -170,47 +171,104 @@ const AirfoilSim = (() => {
     ctx.fillStyle = '#2b2b2b';
     ctx.fillRect(0, 0, W, H);
 
-    // Draw streamlines (particles)
-    particles.forEach((p, i) => {
-      const vel = flowVelocity(p.x, p.y, aoaRad);
-      const speed = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
+    const profile = getAirfoilPoints(20);
 
-      p.x += vel.vx * 0.008;
-      p.y += vel.vy * 0.008;
-      p.age++;
+    if (visualizationMode === 'particles') {
+      // Draw streamlines (particles)
+      particles.forEach((p, i) => {
+        const vel = flowVelocity(p.x, p.y, aoaRad);
+        const speed = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
 
-      // Reset if out of bounds or too old
-      if (p.x > 2 || p.x < -1 || p.y > 2 || p.y < -2 || p.age > p.maxAge) {
-        const np = resetParticle(W, H);
-        p.x = np.x; p.y = np.y; p.age = 0; p.maxAge = np.maxAge;
+        p.x += vel.vx * 0.008;
+        p.y += vel.vy * 0.008;
+        p.age++;
+
+        // Reset if out of bounds or too old
+        if (p.x > 2 || p.x < -1 || p.y > 2 || p.y < -2 || p.age > p.maxAge) {
+          const np = resetParticle(W, H);
+          p.x = np.x; p.y = np.y; p.age = 0; p.maxAge = np.maxAge;
+        }
+
+        // Check if inside airfoil — skip drawing
+        const rotPx = (p.x - 0.25) * Math.cos(-aoaRad) + (p.y) * Math.sin(-aoaRad) + 0.25;
+        const rotPy = -(p.x - 0.25) * Math.sin(-aoaRad) + (p.y) * Math.cos(-aoaRad);
+
+        if (rotPx >= 0 && rotPx <= 1) {
+          const idx = Math.floor(rotPx * 20);
+          const ub = profile.upper[Math.min(idx, 20)];
+          const lb = profile.lower[Math.min(idx, 20)];
+          if (ub && lb && rotPy < ub.y && rotPy > lb.y) return; // inside airfoil
+        }
+
+        const screenPos = toScreen(p.x, p.y, W, H, scale, offsetX, offsetY, 0);
+
+        // Color based on speed
+        const speedNorm = Math.min(speed / (PARTICLE_SPEED * airspeed * 2), 1);
+        const r = Math.floor(232 * speedNorm + 60 * (1 - speedNorm));
+        const g = Math.floor(168 * speedNorm + 60 * (1 - speedNorm));
+        const b = Math.floor(124 * speedNorm + 80 * (1 - speedNorm));
+        const alpha = Math.min(1, (1 - p.age / p.maxAge) * 0.85);
+
+        ctx.beginPath();
+        ctx.arc(screenPos.x, screenPos.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
+        ctx.fill();
+      });
+    } else {
+      // Draw continuous streamlines (Airflow lines)
+      const numLines = 45;
+      for (let j = 0; j < numLines; j++) {
+        let px = -0.5;
+        let py = -1.1 + (j / numLines) * 2.2;
+        let lastScreen = null;
+
+        for (let step = 0; step < 260; step++) {
+          const vel = flowVelocity(px, py, aoaRad);
+          const speed = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
+
+          px += vel.vx * 0.01;
+          py += vel.vy * 0.01;
+
+          if (px > 2.0 || px < -0.8 || py > 2.0 || py < -2.0) break;
+
+          // Check inside airfoil
+          const rotPx = (px - 0.25) * Math.cos(-aoaRad) + py * Math.sin(-aoaRad) + 0.25;
+          const rotPy = -(px - 0.25) * Math.sin(-aoaRad) + py * Math.cos(-aoaRad);
+          let inside = false;
+          if (rotPx >= 0 && rotPx <= 1) {
+            const idx = Math.floor(rotPx * 20);
+            const ub = profile.upper[Math.min(idx, 20)];
+            const lb = profile.lower[Math.min(idx, 20)];
+            if (ub && lb && rotPy < ub.y && rotPy > lb.y) {
+              inside = true;
+            }
+          }
+
+          const screenPos = toScreen(px, py, W, H, scale, offsetX, offsetY, 0);
+
+          if (inside) {
+            lastScreen = null;
+            continue;
+          }
+
+          if (lastScreen) {
+            ctx.beginPath();
+            ctx.moveTo(lastScreen.x, lastScreen.y);
+            ctx.lineTo(screenPos.x, screenPos.y);
+
+            const speedNorm = Math.min(speed / (PARTICLE_SPEED * airspeed * 2), 1);
+            const r = Math.floor(232 * speedNorm + 60 * (1 - speedNorm));
+            const g = Math.floor(168 * speedNorm + 60 * (1 - speedNorm));
+            const b = Math.floor(124 * speedNorm + 80 * (1 - speedNorm));
+
+            ctx.strokeStyle = `rgba(${r},${g},${b},0.42)`;
+            ctx.lineWidth = 1.8;
+            ctx.stroke();
+          }
+          lastScreen = screenPos;
+        }
       }
-
-      // Check if inside airfoil — skip drawing
-      const profile = getAirfoilPoints(20);
-      const rotPx = (p.x - 0.25) * Math.cos(-aoaRad) + (p.y) * Math.sin(-aoaRad) + 0.25;
-      const rotPy = -(p.x - 0.25) * Math.sin(-aoaRad) + (p.y) * Math.cos(-aoaRad);
-
-      if (rotPx >= 0 && rotPx <= 1) {
-        const idx = Math.floor(rotPx * 20);
-        const ub = profile.upper[Math.min(idx, 20)];
-        const lb = profile.lower[Math.min(idx, 20)];
-        if (ub && lb && rotPy < ub.y && rotPy > lb.y) return; // inside airfoil
-      }
-
-      const screenPos = toScreen(p.x, p.y, W, H, scale, offsetX, offsetY, 0);
-
-      // Color based on speed
-      const speedNorm = Math.min(speed / (PARTICLE_SPEED * airspeed * 2), 1);
-      const r = Math.floor(232 * speedNorm + 60 * (1 - speedNorm));
-      const g = Math.floor(168 * speedNorm + 60 * (1 - speedNorm));
-      const b = Math.floor(124 * speedNorm + 80 * (1 - speedNorm));
-      const alpha = Math.min(1, (1 - p.age / p.maxAge) * 0.8);
-
-      ctx.beginPath();
-      ctx.arc(screenPos.x, screenPos.y, p.size, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
-      ctx.fill();
-    });
+    }
 
     // Draw airfoil profile
     drawAirfoil(W, H, scale, offsetX, offsetY, aoaRad);
@@ -356,5 +414,11 @@ const AirfoilSim = (() => {
     }
   }
 
-  return { init, start, stop, setAoA, setAirspeed, setChord, getAirfoilPoints, nacaCamberLine };
+  function setVisualizationMode(mode) {
+    if (mode === 'particles' || mode === 'streamlines') {
+      visualizationMode = mode;
+    }
+  }
+
+  return { init, start, stop, setAoA, setAirspeed, setChord, setVisualizationMode, getAirfoilPoints, nacaCamberLine };
 })();

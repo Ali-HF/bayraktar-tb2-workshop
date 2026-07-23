@@ -537,11 +537,19 @@
         <input type="range" id="airspeed-slider" min="0.2" max="3" value="1" step="0.1">
       </div>
 
-      <div style="margin-top:16px;">
-        <span style="font-size:0.8rem; color:var(--text-secondary); margin-right:12px;">Chord Section:</span>
-        <div class="btn-group" id="chord-toggle">
-          <button class="btn btn-sm active" data-chord="root">Root (60mm)</button>
-          <button class="btn btn-sm" data-chord="tip">Tip (40mm)</button>
+      <div style="margin-top:14px; display: flex; align-items: center; gap: 8px;">
+        <span style="font-size:0.8rem; color:var(--text-secondary); min-width: 100px;">Chord Section:</span>
+        <div class="btn-group" id="chord-toggle" style="flex: 1;">
+          <button class="btn btn-sm active" data-chord="root" style="width: 50%;">Root (60mm)</button>
+          <button class="btn btn-sm" data-chord="tip" style="width: 50%;">Tip (40mm)</button>
+        </div>
+      </div>
+
+      <div style="margin-top:12px; display: flex; align-items: center; gap: 8px;">
+        <span style="font-size:0.8rem; color:var(--text-secondary); min-width: 100px;">Airflow Mode:</span>
+        <div class="btn-group" id="vis-mode-toggle" style="flex: 1;">
+          <button class="btn btn-sm active" data-mode="particles" style="width: 50%;">Particles</button>
+          <button class="btn btn-sm" data-mode="streamlines" style="width: 50%;">Airflow Lines</button>
         </div>
       </div>
 
@@ -819,6 +827,14 @@
     document.querySelectorAll('#chord-toggle .btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     AirfoilSim.setChord(btn.dataset.chord);
+  });
+
+  document.getElementById('vis-mode-toggle').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-mode]');
+    if (!btn) return;
+    document.querySelectorAll('#vis-mode-toggle .btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    AirfoilSim.setVisualizationMode(btn.dataset.mode);
   });
 
   // ── Budget target slider ──
