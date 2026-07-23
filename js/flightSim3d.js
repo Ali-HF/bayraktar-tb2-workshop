@@ -256,7 +256,7 @@ const FlightSim3D = (() => {
       return geo;
     }
 
-    // RIGHT AILERON — hinge at trailing edge, spanning +Z outward
+    // Right Aileron — hinge at trailing edge, spanning +Z outward
     rAileronPivot = new THREE.Group();
     rAileronPivot.position.set(teX, wingThick * 0.05, fuseW * 0.4 + aileronSpanStart);
     rAileronPivot.rotation.x = -dihedralRad;
@@ -265,9 +265,9 @@ const FlightSim3D = (() => {
     rAileronMesh.userData = { name: 'Right Aileron (Roll)' };
     addEdges(rAileronMesh, 0.4);
     rAileronPivot.add(rAileronMesh);
-    scene.add(rAileronPivot);
+    airframeGroup.add(rAileronPivot);
 
-    // LEFT AILERON — hinge at trailing edge, spanning -Z outward
+    // Left Aileron — hinge at trailing edge, spanning -Z outward
     lAileronPivot = new THREE.Group();
     lAileronPivot.position.set(teX, wingThick * 0.05, -(fuseW * 0.4 + aileronSpanStart));
     lAileronPivot.rotation.x = dihedralRad;
@@ -284,7 +284,7 @@ const FlightSim3D = (() => {
     lAileronMesh.userData = { name: 'Left Aileron (Roll)' };
     addEdges(lAileronMesh, 0.4);
     lAileronPivot.add(lAileronMesh);
-    scene.add(lAileronPivot);
+    airframeGroup.add(lAileronPivot);
 
     // ═══════════════════════════════════════════════════
     // 4. TWIN TAIL BOOMS
@@ -333,8 +333,6 @@ const FlightSim3D = (() => {
     addEdges(lFin);
     airframeGroup.add(lFin);
 
-    scene.add(airframeGroup);
-
     // Ruddervator flap geometry — wedge matching fin trailing edge (length along Y, thin depth along Z)
     function createRuddervatorGeo() {
       const shape = new THREE.Shape();
@@ -360,7 +358,7 @@ const FlightSim3D = (() => {
     rRuddervatorMesh.userData = { name: 'Right Ruddervator (Pitch/Yaw)' };
     addEdges(rRuddervatorMesh, 0.4);
     rRuddervatorPivot.add(rRuddervatorMesh);
-    scene.add(rRuddervatorPivot);
+    airframeGroup.add(rRuddervatorPivot);
 
     // Left Ruddervator — mirrored matching lFin exactly
     lRuddervatorPivot = new THREE.Group();
@@ -372,7 +370,9 @@ const FlightSim3D = (() => {
     lRuddervatorMesh.userData = { name: 'Left Ruddervator (Pitch/Yaw)' };
     addEdges(lRuddervatorMesh, 0.4);
     lRuddervatorPivot.add(lRuddervatorMesh);
-    scene.add(lRuddervatorPivot);
+    airframeGroup.add(lRuddervatorPivot);
+
+    scene.add(airframeGroup);
 
     // ═══════════════════════════════════════════════════
     // 6. PUSHER PROPELLER
