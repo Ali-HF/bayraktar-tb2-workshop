@@ -98,6 +98,9 @@ const Aircraft3D = (() => {
     tooltip.style.display = 'none';
     container.appendChild(tooltip);
 
+    // ═══ Blender-style Grid Floor ═══
+    addBlenderGrid(scene);
+
     buildAircraft();
 
     container.addEventListener('mousemove', onMouseMove);

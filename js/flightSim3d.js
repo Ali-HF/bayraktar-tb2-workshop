@@ -1,12 +1,12 @@
 /* ============================================================
-   Bayraktar TB2 — Flight Controls & Ruddervator X-Ray Sim (v4)
+   Bayraktar TB2 — Flight Controls & Ruddervator X-Ray Sim (v5)
    ============================================================
-   Bulletproof Flap Hinge Physics & Surface Geometry:
-   - Ailerons placed strictly on outer trailing edge of wings
-   - Ruddervators placed strictly on trailing edge of V-tail fins
-   - Hinge line at origin (0,0,0) of each flap pivot group
-   - Deflection rotates around local Z-axis (hinge line) so flaps pivot UP/DOWN
-   - Flight Computer Surface Mixing (Roll, Pitch, Yaw, Throttle)
+   Fixed Issues:
+   - Aileron flaps are wedge-shaped, matching wing airfoil trailing edge taper
+   - Ruddervator flaps are wedge-shaped, matching V-tail fin trailing edge
+   - Ailerons deflect INDEPENDENTLY in OPPOSITE directions for roll
+   - Ruddervators deflect together for pitch, differentially for yaw
+   - All flaps merge seamlessly with the airframe at 0° deflection
    ============================================================ */
 
 const FlightSim3D = (() => {
@@ -21,14 +21,14 @@ const FlightSim3D = (() => {
   let rRuddervatorMesh, lRuddervatorMesh;
   let propGroup;
 
-  // Display Mode: 'solid' | 'xray' | 'electronics'
+  // Display Mode
   let displayMode = 'xray';
 
   // Master Flight Control Inputs (-1 to +1, Throttle 0 to 1)
   const input = {
-    pitch: 0,    // Elevator: Both ruddervators up/down together
-    roll: 0,     // Aileron: Right up / Left down (opposite)
-    yaw: 0,      // Rudder: Ruddervators differential deflection
+    pitch: 0,
+    roll: 0,
+    yaw: 0,
     throttle: 0.4
   };
 
@@ -41,7 +41,7 @@ const FlightSim3D = (() => {
   };
 
   let manualOverride = false;
-  const S = 0.01; // 1mm = 0.01 units
+  const S = 0.01;
 
   function init(containerId) {
     container = document.getElementById(containerId);
@@ -59,27 +59,26 @@ const FlightSim3D = (() => {
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.35;
     container.appendChild(renderer.domElement);
 
-    // Lighting
     scene.add(new THREE.AmbientLight(0x555555, 0.8));
     const keyLight = new THREE.DirectionalLight(0xffffff, 0.9);
     keyLight.position.set(6, 10, 6);
     scene.add(keyLight);
-
     const rimLight = new THREE.DirectionalLight(0xe8a87c, 0.8);
     rimLight.position.set(-5, 2, -6);
     scene.add(rimLight);
-
     scene.add(new THREE.HemisphereLight(0x445566, 0x222222, 0.4));
 
     controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.target.set(0, 0, 0);
+
+    // ═══ Blender-style Grid Floor ═══
+    addBlenderGrid(scene);
 
     buildModel();
     setupKeyboardListeners();
@@ -92,42 +91,68 @@ const FlightSim3D = (() => {
   function buildModel() {
     const d = PlaneData.dimensions;
 
-    const span = d.wingspan * S;             // 10.0
-    const totalLen = d.fuselageLength * S;   // 5.42
-    const fuseW = d.fuselageWidth * S;       // 0.45
-    const fuseH = d.fuselageHeight * S;      // 0.55
-    const rootC = d.wingRootChord * S;       // 0.60
-    const tipC = d.wingTipChord * S;         // 0.40
-    const vTailH = d.vTailHeight * S;        // 0.70
-    const vTailC = d.vTailRootChord * S;     // 0.45
-    const vTailAngle = d.vTailAngle;         // 110°
-    const noseToWingLE = d.noseToWingLE * S; // 2.20
+    const span = d.wingspan * S;
+    const fuseW = d.fuselageWidth * S;
+    const fuseH = d.fuselageHeight * S;
+    const rootC = d.wingRootChord * S;
+    const tipC = d.wingTipChord * S;
+    const vTailC = d.vTailRootChord * S;
+    const vTailAngle = d.vTailAngle;
+    const noseToWingLE = d.noseToWingLE * S;
+    const totalLen = d.fuselageLength * S;
 
     const noseX = 2.40;
-    const wingX = noseX - noseToWingLE; // +0.20 (Leading Edge position)
+    const wingX = noseX - noseToWingLE;
     const podTailX = -0.80;
-    const rearX = noseX - totalLen;     // -3.02
-    const halfSpan = span / 2;          // 5.0
+    const rearX = noseX - totalLen;
+    const halfSpan = span / 2;
     const dihedralRad = (2.5 * Math.PI) / 180;
+    const wingThick = d.wingThicknessRoot * S;
+
+    // Wing geometry constants
+    const wingDepth = halfSpan - fuseW * 0.4; // Spanwise length of one wing panel
+    const mainChordFrac = 0.75;               // Main wing body = 75% of chord
+    const aileronChordFrac = 0.25;            // Aileron = remaining 25% of chord
+    const aileronStartFrac = 0.4;             // Aileron starts at 40% span
+    const aileronEndFrac = 1.0;               // Aileron ends at wingtip
+
+    const mainChord = rootC * mainChordFrac;
+    const aileronChord = rootC * aileronChordFrac;
+    const aileronSpanStart = wingDepth * aileronStartFrac;
+    const aileronSpanLen = wingDepth * (aileronEndFrac - aileronStartFrac);
+    const teX = wingX - mainChord; // Trailing edge X of main wing body (hinge line)
+
+    // V-tail constants
+    const boomSpacing = 1.0;
+    const halfAngle = (vTailAngle / 2) * (Math.PI / 180); // 55°
+    const finTiltAngle = Math.PI / 2 - halfAngle;          // 35° from horizontal
+    const finLen = boomSpacing / Math.sin(finTiltAngle);
+    const apexY = -0.05 + finLen * Math.cos(finTiltAngle);
+
+    const finMainChordFrac = 0.75;
+    const ruddervatorChordFrac = 0.25;
+    const finMainChord = vTailC * finMainChordFrac;
+    const ruddervatorChord = vTailC * ruddervatorChordFrac;
 
     airframeGroup = new THREE.Group();
     electronicsGroup = new THREE.Group();
     wiringGroup = new THREE.Group();
 
     // ═══════════════════════════════════════════════════
-    // 1. AIRFRAME (Pod, Main Wings, Booms, Fixed Fins)
+    // AIRFRAME MATERIALS
     // ═══════════════════════════════════════════════════
     const airframeMat = new THREE.MeshStandardMaterial({
-      color: 0x4a5568,
-      roughness: 0.4,
-      metalness: 0.2,
-      flatShading: true,
-      transparent: true,
-      opacity: 0.35,
-      depthWrite: false
+      color: 0x4a5568, roughness: 0.4, metalness: 0.2, flatShading: true,
+      transparent: true, opacity: 0.35, depthWrite: false
     });
 
-    // Central Fuselage Pod
+    const controlMat = new THREE.MeshStandardMaterial({
+      color: 0xe74c3c, roughness: 0.3, metalness: 0.2, flatShading: true
+    });
+
+    // ═══════════════════════════════════════════════════
+    // 1. CENTRAL FUSELAGE POD
+    // ═══════════════════════════════════════════════════
     const podLen = noseX - podTailX;
     const podGeo = new THREE.CylinderGeometry(fuseW * 0.35, fuseW * 0.48, podLen, 10, 8);
     podGeo.rotateZ(Math.PI / 2);
@@ -139,41 +164,42 @@ const FlightSim3D = (() => {
       if (frac > 0.7) {
         const nt = (frac - 0.7) / 0.3;
         scaleY = Math.cos(nt * Math.PI * 0.5) * 0.9 + 0.1;
-        scaleZ = Math.cos(nt * Math.PI * 0.5) * 0.9 + 0.1;
+        scaleZ = scaleY;
       } else if (frac < 0.25) {
         const rt = (0.25 - frac) / 0.25;
         scaleY = 1.0 - rt * 0.35;
-        scaleZ = 1.0 - rt * 0.35;
+        scaleZ = scaleY;
       }
       pPos.setY(i, pPos.getY(i) * scaleY * (fuseH / fuseW));
       pPos.setZ(i, pPos.getZ(i) * scaleZ);
     }
     podGeo.computeVertexNormals();
-
     const podMesh = new THREE.Mesh(podGeo, airframeMat);
     podMesh.position.set((noseX + podTailX) / 2, 0, 0);
-    addWireframeEdges(podMesh);
+    addEdges(podMesh);
     airframeGroup.add(podMesh);
 
-    // Main Wing Body (75% chord, LE at X=0, TE at -c*0.75)
-    function createWingMainGeo() {
+    // ═══════════════════════════════════════════════════
+    // 2. MAIN WING BODY (75% chord, LE forward, TE backward)
+    // ═══════════════════════════════════════════════════
+    function createMainWingGeo() {
       const shape = new THREE.Shape();
-      const c = rootC * 0.75;
-      const t = d.wingThicknessRoot * S;
+      const c = mainChord;
+      const t = wingThick;
+      // Airfoil cross-section: LE at (0,0), TE at (-c, 0)
       shape.moveTo(0, 0);
-      shape.lineTo(-c * 0.2, t * 0.8);
-      shape.lineTo(-c * 0.5, t);
-      shape.lineTo(-c, 0);
-      shape.lineTo(-c * 0.4, -t * 0.25);
+      shape.lineTo(-c * 0.25, t * 0.8);
+      shape.lineTo(-c * 0.55, t);
+      shape.lineTo(-c, t * 0.15);        // TE upper surface — thin wedge
+      shape.lineTo(-c, -t * 0.05);       // TE lower surface
+      shape.lineTo(-c * 0.5, -t * 0.25);
       shape.closePath();
 
-      const extrudeSettings = { steps: 6, depth: halfSpan - fuseW * 0.4, bevelEnabled: false };
-      const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+      const geo = new THREE.ExtrudeGeometry(shape, { steps: 6, depth: wingDepth, bevelEnabled: false });
       const pos = geo.attributes.position;
-      const depth = halfSpan - fuseW * 0.4;
       for (let i = 0; i < pos.count; i++) {
         const z = pos.getZ(i);
-        const frac = z / depth;
+        const frac = z / wingDepth;
         const scale = 1 - frac * (1 - tipC / rootC);
         pos.setX(i, pos.getX(i) * scale);
         pos.setY(i, pos.getY(i) * scale);
@@ -182,21 +208,87 @@ const FlightSim3D = (() => {
       return geo;
     }
 
-    const rWingMesh = new THREE.Mesh(createWingMainGeo(), airframeMat);
-    rWingMesh.position.set(wingX, 0, fuseW * 0.4);
-    rWingMesh.rotation.x = -dihedralRad;
-    addWireframeEdges(rWingMesh);
-    airframeGroup.add(rWingMesh);
+    const rWing = new THREE.Mesh(createMainWingGeo(), airframeMat);
+    rWing.position.set(wingX, 0, fuseW * 0.4);
+    rWing.rotation.x = -dihedralRad;
+    addEdges(rWing);
+    airframeGroup.add(rWing);
 
-    const lWingMesh = new THREE.Mesh(createWingMainGeo(), airframeMat);
-    lWingMesh.position.set(wingX, 0, -fuseW * 0.4);
-    lWingMesh.scale.z = -1;
-    lWingMesh.rotation.x = dihedralRad;
-    addWireframeEdges(lWingMesh);
-    airframeGroup.add(lWingMesh);
+    const lWing = new THREE.Mesh(createMainWingGeo(), airframeMat);
+    lWing.position.set(wingX, 0, -fuseW * 0.4);
+    lWing.scale.z = -1;
+    lWing.rotation.x = dihedralRad;
+    addEdges(lWing);
+    airframeGroup.add(lWing);
 
-    // Twin Tail Booms
-    const boomSpacing = 1.0;
+    // ═══════════════════════════════════════════════════
+    // 3. AILERON FLAPS (Wedge-shaped, matching trailing edge profile)
+    //    Hinge line at X = teX, spanning outer 60% of wing
+    // ═══════════════════════════════════════════════════
+
+    // Create wedge-shaped aileron geometry that matches the wing TE cross-section
+    function createAileronGeo(spanLen) {
+      const shape = new THREE.Shape();
+      const c = aileronChord;
+      const tHinge = wingThick * 0.15; // Thickness at hinge line (matches wing TE)
+      const tTip = wingThick * 0.02;   // Very thin trailing edge
+
+      // Wedge cross-section: hinge at X=0, TE at X=-c
+      shape.moveTo(0, tHinge / 2);     // Upper hinge
+      shape.lineTo(-c, tTip / 2);      // Upper TE
+      shape.lineTo(-c, -tTip / 2);     // Lower TE
+      shape.lineTo(0, -tHinge / 2);    // Lower hinge
+      shape.closePath();
+
+      const geo = new THREE.ExtrudeGeometry(shape, { steps: 4, depth: spanLen, bevelEnabled: false });
+
+      // Apply taper matching wing taper at aileron span positions
+      const pos = geo.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const z = pos.getZ(i);
+        const spanFrac = z / spanLen;
+        const globalSpanFrac = aileronStartFrac + spanFrac * (aileronEndFrac - aileronStartFrac);
+        const taperScale = 1 - globalSpanFrac * (1 - tipC / rootC);
+        pos.setX(i, pos.getX(i) * taperScale);
+        pos.setY(i, pos.getY(i) * taperScale);
+      }
+      geo.computeVertexNormals();
+      return geo;
+    }
+
+    // RIGHT AILERON — hinge at trailing edge, spanning +Z outward
+    rAileronPivot = new THREE.Group();
+    rAileronPivot.position.set(teX, wingThick * 0.05, fuseW * 0.4 + aileronSpanStart);
+    rAileronPivot.rotation.x = -dihedralRad;
+
+    rAileronMesh = new THREE.Mesh(createAileronGeo(aileronSpanLen), controlMat);
+    rAileronMesh.userData = { name: 'Right Aileron (Roll)' };
+    addEdges(rAileronMesh, 0.4);
+    rAileronPivot.add(rAileronMesh);
+    scene.add(rAileronPivot);
+
+    // LEFT AILERON — hinge at trailing edge, spanning -Z outward
+    lAileronPivot = new THREE.Group();
+    lAileronPivot.position.set(teX, wingThick * 0.05, -(fuseW * 0.4 + aileronSpanStart));
+    lAileronPivot.rotation.x = dihedralRad;
+
+    const lAileronGeo = createAileronGeo(aileronSpanLen);
+    // Mirror the geometry to extend in -Z
+    const lPos = lAileronGeo.attributes.position;
+    for (let i = 0; i < lPos.count; i++) {
+      lPos.setZ(i, -lPos.getZ(i));
+    }
+    lAileronGeo.computeVertexNormals();
+
+    lAileronMesh = new THREE.Mesh(lAileronGeo, controlMat.clone());
+    lAileronMesh.userData = { name: 'Left Aileron (Roll)' };
+    addEdges(lAileronMesh, 0.4);
+    lAileronPivot.add(lAileronMesh);
+    scene.add(lAileronPivot);
+
+    // ═══════════════════════════════════════════════════
+    // 4. TWIN TAIL BOOMS
+    // ═══════════════════════════════════════════════════
     const boomStartX = wingX - rootC * 0.2;
     const boomLen = boomStartX - rearX;
     const boomGeo = new THREE.CylinderGeometry(0.055, 0.035, boomLen, 6, 4);
@@ -204,252 +296,156 @@ const FlightSim3D = (() => {
 
     const rBoom = new THREE.Mesh(boomGeo, airframeMat);
     rBoom.position.set((boomStartX + rearX) / 2, -0.05, boomSpacing);
-    addWireframeEdges(rBoom);
+    addEdges(rBoom);
     airframeGroup.add(rBoom);
 
     const lBoom = new THREE.Mesh(boomGeo.clone(), airframeMat);
     lBoom.position.set((boomStartX + rearX) / 2, -0.05, -boomSpacing);
-    addWireframeEdges(lBoom);
+    addEdges(lBoom);
     airframeGroup.add(lBoom);
 
-    // Fixed V-Tail Fins (70% chord)
-    const halfAngle = (vTailAngle / 2) * (Math.PI / 180); // 55°
-    const finLen = boomSpacing / Math.sin(Math.PI / 2 - halfAngle);
-    const apexY = -0.05 + finLen * Math.cos(Math.PI / 2 - halfAngle);
-
+    // ═══════════════════════════════════════════════════
+    // 5. FIXED V-TAIL FINS (75% chord) & RUDDERVATOR FLAPS (25% chord)
+    // ═══════════════════════════════════════════════════
     function createFixedFinGeo() {
       const shape = new THREE.Shape();
-      const c = vTailC * 0.75;
+      const c = finMainChord;
       const h = finLen;
       shape.moveTo(0, 0);
       shape.lineTo(-c, 0);
-      shape.lineTo(-c * 0.6, h);
+      shape.lineTo(-c * 0.65, h);
       shape.lineTo(-c * 0.1, h);
       shape.closePath();
-
       return new THREE.ExtrudeGeometry(shape, { depth: 0.018, bevelEnabled: false });
     }
 
-    const rFinFixed = new THREE.Mesh(createFixedFinGeo(), airframeMat);
-    rFinFixed.position.set(rearX, -0.05, boomSpacing);
-    rFinFixed.rotation.x = -(Math.PI / 2 - halfAngle);
-    addWireframeEdges(rFinFixed);
-    airframeGroup.add(rFinFixed);
+    const rFin = new THREE.Mesh(createFixedFinGeo(), airframeMat);
+    rFin.position.set(rearX, -0.05, boomSpacing);
+    rFin.rotation.x = -finTiltAngle;
+    addEdges(rFin);
+    airframeGroup.add(rFin);
 
-    const lFinFixed = new THREE.Mesh(createFixedFinGeo(), airframeMat);
-    lFinFixed.position.set(rearX, -0.05, -boomSpacing);
-    lFinFixed.rotation.x = (Math.PI / 2 - halfAngle);
-    lFinFixed.scale.z = -1;
-    addWireframeEdges(lFinFixed);
-    airframeGroup.add(lFinFixed);
+    const lFin = new THREE.Mesh(createFixedFinGeo(), airframeMat);
+    lFin.position.set(rearX, -0.05, -boomSpacing);
+    lFin.rotation.x = finTiltAngle;
+    lFin.scale.z = -1;
+    addEdges(lFin);
+    airframeGroup.add(lFin);
 
     scene.add(airframeGroup);
 
-    // ═══════════════════════════════════════════════════
-    // 2. ARTICULATED CONTROL SURFACES (Hinged Trailing Flaps)
-    // ═══════════════════════════════════════════════════
-    const controlMat = new THREE.MeshStandardMaterial({
-      color: 0xe74c3c, // Red flap color
-      roughness: 0.3,
-      metalness: 0.2,
-      flatShading: true
-    });
+    // Ruddervator flap geometry — wedge matching fin trailing edge
+    function createRuddervatorGeo() {
+      const shape = new THREE.Shape();
+      const c = ruddervatorChord;
+      const tHinge = 0.015;  // Matches fin trailing edge thickness
+      const tTip = 0.003;
 
-    const aileronSpan = (halfSpan - fuseW * 0.4) * 0.6; // Outer 60% of wing
-    const aileronChord = rootC * 0.25;
-    const teX = wingX - rootC * 0.75; // Trailing Edge Hinge Line
+      // Hinge at X=0, TE at X=-c
+      shape.moveTo(0, tHinge / 2);
+      shape.lineTo(-c, tTip / 2);
+      shape.lineTo(-c, -tTip / 2);
+      shape.lineTo(0, -tHinge / 2);
+      shape.closePath();
 
-    // --- RIGHT AILERON ---
-    // Hinge at wing trailing edge, 40% out along right wing
-    rAileronPivot = new THREE.Group();
-    rAileronPivot.position.set(teX, 0, fuseW * 0.4 + (halfSpan - fuseW * 0.4) * 0.4);
-    rAileronPivot.rotation.x = -dihedralRad;
+      // Extrude along Z-axis (length of the fin)
+      return new THREE.ExtrudeGeometry(shape, { depth: finLen * 0.95, bevelEnabled: false });
+    }
 
-    const rAileronGeo = new THREE.BoxGeometry(aileronChord, 0.02, aileronSpan);
-    rAileronGeo.translate(-aileronChord * 0.5, 0, aileronSpan * 0.5); // Extends -X (back), +Z (out)
-    rAileronMesh = new THREE.Mesh(rAileronGeo, controlMat);
-    rAileronMesh.userData = { name: 'Right Aileron (Roll Control)' };
-    addWireframeEdges(rAileronMesh, 0.4);
-    rAileronPivot.add(rAileronMesh);
-    scene.add(rAileronPivot);
-
-    // --- LEFT AILERON ---
-    // Hinge at wing trailing edge, 40% out along left wing
-    lAileronPivot = new THREE.Group();
-    lAileronPivot.position.set(teX, 0, -(fuseW * 0.4 + (halfSpan - fuseW * 0.4) * 0.4));
-    lAileronPivot.rotation.x = dihedralRad;
-
-    const lAileronGeo = new THREE.BoxGeometry(aileronChord, 0.02, aileronSpan);
-    lAileronGeo.translate(-aileronChord * 0.5, 0, -aileronSpan * 0.5); // Extends -X (back), -Z (out)
-    lAileronMesh = new THREE.Mesh(lAileronGeo, controlMat.clone());
-    lAileronMesh.userData = { name: 'Left Aileron (Roll Control)' };
-    addWireframeEdges(lAileronMesh, 0.4);
-    lAileronPivot.add(lAileronMesh);
-    scene.add(lAileronPivot);
-
-    // --- RIGHT RUDDERVATOR (On angled V-tail fin trailing edge) ---
+    // Right Ruddervator — pivot positioned at the hinge line
     rRuddervatorPivot = new THREE.Group();
-    const rHingeBase = new THREE.Vector3(rearX - vTailC * 0.75, -0.05, boomSpacing);
-    const rHingeApex = new THREE.Vector3(rearX - vTailC * 0.75, apexY, 0);
-    const rFinDir = rHingeApex.clone().sub(rHingeBase).normalize();
+    rRuddervatorPivot.position.set(rearX - finMainChord, -0.05, boomSpacing);
+    rRuddervatorPivot.rotation.x = -finTiltAngle; // Tilted matching the right fin
 
-    rRuddervatorPivot.position.copy(rHingeBase);
-    rRuddervatorPivot.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), rFinDir);
-
-    const ruddervatorChord = vTailC * 0.25;
-    const ruddervatorGeo = new THREE.BoxGeometry(ruddervatorChord, 0.018, finLen);
-    ruddervatorGeo.translate(-ruddervatorChord * 0.5, 0, finLen * 0.5);
-
-    rRuddervatorMesh = new THREE.Mesh(ruddervatorGeo, controlMat.clone());
-    rRuddervatorMesh.userData = { name: 'Right Ruddervator (Pitch/Yaw Control)' };
-    addWireframeEdges(rRuddervatorMesh, 0.4);
+    rRuddervatorMesh = new THREE.Mesh(createRuddervatorGeo(), controlMat.clone());
+    rRuddervatorMesh.userData = { name: 'Right Ruddervator (Pitch/Yaw)' };
+    addEdges(rRuddervatorMesh, 0.4);
     rRuddervatorPivot.add(rRuddervatorMesh);
     scene.add(rRuddervatorPivot);
 
-    // --- LEFT RUDDERVATOR (On angled V-tail fin trailing edge) ---
+    // Left Ruddervator — mirrored
     lRuddervatorPivot = new THREE.Group();
-    const lHingeBase = new THREE.Vector3(rearX - vTailC * 0.75, -0.05, -boomSpacing);
-    const lHingeApex = new THREE.Vector3(rearX - vTailC * 0.75, apexY, 0);
-    const lFinDir = lHingeApex.clone().sub(lHingeBase).normalize();
+    lRuddervatorPivot.position.set(rearX - finMainChord, -0.05, -boomSpacing);
+    lRuddervatorPivot.rotation.x = finTiltAngle; // Tilted matching the left fin
 
-    lRuddervatorPivot.position.copy(lHingeBase);
-    lRuddervatorPivot.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), lFinDir);
+    const lRuddGeo = createRuddervatorGeo();
+    // Mirror along the Z-axis (depth) since left fin points in opposite Z direction
+    const lrPos = lRuddGeo.attributes.position;
+    for (let i = 0; i < lrPos.count; i++) {
+      lrPos.setZ(i, -lrPos.getZ(i));
+    }
+    lRuddGeo.computeVertexNormals();
 
-    lRuddervatorMesh = new THREE.Mesh(ruddervatorGeo.clone(), controlMat.clone());
-    lRuddervatorMesh.userData = { name: 'Left Ruddervator (Pitch/Yaw Control)' };
-    addWireframeEdges(lRuddervatorMesh, 0.4);
+    lRuddervatorMesh = new THREE.Mesh(lRuddGeo, controlMat.clone());
+    lRuddervatorMesh.userData = { name: 'Left Ruddervator (Pitch/Yaw)' };
+    addEdges(lRuddervatorMesh, 0.4);
     lRuddervatorPivot.add(lRuddervatorMesh);
     scene.add(lRuddervatorPivot);
 
-    // Pusher Propeller
+    // ═══════════════════════════════════════════════════
+    // 6. PUSHER PROPELLER
+    // ═══════════════════════════════════════════════════
     propGroup = new THREE.Group();
     const propMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3, flatShading: true });
-    const spinnerMesh = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.12, 8), propMat);
-    spinnerMesh.rotateZ(-Math.PI / 2);
-    spinnerMesh.position.set(podTailX - 0.18, 0, 0);
-    propGroup.add(spinnerMesh);
-
-    const bladeMesh = new THREE.Mesh(new THREE.BoxGeometry(0.015, 1.1, 0.04), propMat);
-    bladeMesh.position.set(podTailX - 0.16, 0, 0);
-    propGroup.add(bladeMesh);
+    const spinner = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.12, 8), propMat);
+    spinner.rotateZ(-Math.PI / 2);
+    spinner.position.set(podTailX - 0.18, 0, 0);
+    propGroup.add(spinner);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.015, 1.1, 0.04), propMat);
+    blade.position.set(podTailX - 0.16, 0, 0);
+    propGroup.add(blade);
     scene.add(propGroup);
 
     // ═══════════════════════════════════════════════════
-    // 3. INTERNAL ELECTRONICS COMPONENTS
+    // 7. INTERNAL ELECTRONICS
     // ═══════════════════════════════════════════════════
+    const mkElec = (geo, color, pos, name, info) => {
+      const mat = new THREE.MeshStandardMaterial({ color, metalness: 0.5, roughness: 0.3, flatShading: true });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(pos[0], pos[1], pos[2]);
+      mesh.userData = { name, info };
+      addEdges(mesh, 0.5);
+      electronicsGroup.add(mesh);
+    };
 
     const motorGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.16, 12);
     motorGeo.rotateZ(Math.PI / 2);
-    const motorMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8, roughness: 0.2, flatShading: true });
-    const motor = new THREE.Mesh(motorGeo, motorMat);
-    motor.position.set(podTailX - 0.05, 0, 0);
-    motor.userData = { name: 'Brushless Motor (Emax 2213)', info: 'Pusher Motor, 180W' };
-    addWireframeEdges(motor, 0.4);
-    electronicsGroup.add(motor);
-
-    const escGeo = new THREE.BoxGeometry(0.25, 0.08, 0.18);
-    const escMat = new THREE.MeshStandardMaterial({ color: 0x3498db, metalness: 0.5, roughness: 0.3, flatShading: true });
-    const esc = new THREE.Mesh(escGeo, escMat);
-    esc.position.set(podTailX + 0.3, -0.05, 0);
-    esc.userData = { name: 'ESC (20A Brushless)', info: '30A Max, 3S LiPo Compatible' };
-    addWireframeEdges(esc, 0.5);
-    electronicsGroup.add(esc);
-
-    const batGeo = new THREE.BoxGeometry(0.55, 0.18, 0.24);
-    const batMat = new THREE.MeshStandardMaterial({ color: 0x2ecc71, metalness: 0.3, roughness: 0.4, flatShading: true });
-    const battery = new THREE.Mesh(batGeo, batMat);
-    battery.position.set(0.15, -0.05, 0);
-    battery.userData = { name: '3S LiPo Battery Pack', info: '1300mAh 11.1V 25C (108g)' };
-    addWireframeEdges(battery, 0.5);
-    electronicsGroup.add(battery);
-
-    const fcGeo = new THREE.BoxGeometry(0.22, 0.06, 0.22);
-    const fcMat = new THREE.MeshStandardMaterial({ color: 0x9b59b6, metalness: 0.6, roughness: 0.2, flatShading: true });
-    const fc = new THREE.Mesh(fcGeo, fcMat);
-    fc.position.set(0.8, 0.05, 0);
-    fc.userData = { name: 'Flight Controller & Receiver', info: 'Auto-stabilization & 6-channel Receiver' };
-    addWireframeEdges(fc, 0.5);
-    electronicsGroup.add(fc);
-
-    const servoGeo = new THREE.BoxGeometry(0.12, 0.1, 0.08);
-    const servoMat = new THREE.MeshStandardMaterial({ color: 0xf1c40f, metalness: 0.4, roughness: 0.3, flatShading: true });
-
-    const rServo = new THREE.Mesh(servoGeo, servoMat);
-    rServo.position.set(wingX - rootC * 0.4, 0, 1.8);
-    rServo.userData = { name: 'Right Aileron Servo (9g)', info: '1.8 kg·cm Torque' };
-    addWireframeEdges(rServo, 0.5);
-    electronicsGroup.add(rServo);
-
-    const lServo = new THREE.Mesh(servoGeo.clone(), servoMat.clone());
-    lServo.position.set(wingX - rootC * 0.4, 0, -1.8);
-    lServo.userData = { name: 'Left Aileron Servo (9g)', info: '1.8 kg·cm Torque' };
-    addWireframeEdges(lServo, 0.5);
-    electronicsGroup.add(lServo);
-
-    const rTailServo = new THREE.Mesh(servoGeo.clone(), servoMat.clone());
-    rTailServo.position.set(-0.6, -0.05, 0.9);
-    rTailServo.userData = { name: 'Right Ruddervator Servo (9g)', info: 'V-tail control' };
-    addWireframeEdges(rTailServo, 0.5);
-    electronicsGroup.add(rTailServo);
-
-    const lTailServo = new THREE.Mesh(servoGeo.clone(), servoMat.clone());
-    lTailServo.position.set(-0.6, -0.05, -0.9);
-    lTailServo.userData = { name: 'Left Ruddervator Servo (9g)', info: 'V-tail control' };
-    addWireframeEdges(lTailServo, 0.5);
-    electronicsGroup.add(lTailServo);
-
-    const gimbalMat = new THREE.MeshStandardMaterial({ color: 0x1abc9c, metalness: 0.7, roughness: 0.2, flatShading: true });
-    const gimbal = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), gimbalMat);
-    gimbal.position.set(1.9, -0.3, 0);
-    gimbal.userData = { name: 'EO/IR Camera Turret', info: 'Optical & Thermal Payload' };
-    addWireframeEdges(gimbal, 0.5);
-    electronicsGroup.add(gimbal);
+    mkElec(motorGeo, 0x333333, [podTailX - 0.05, 0, 0], 'Brushless Motor', '180W Pusher');
+    mkElec(new THREE.BoxGeometry(0.25, 0.08, 0.18), 0x3498db, [podTailX + 0.3, -0.05, 0], 'ESC (30A)', '3S LiPo Compatible');
+    mkElec(new THREE.BoxGeometry(0.55, 0.18, 0.24), 0x2ecc71, [0.15, -0.05, 0], '3S LiPo Battery', '1300mAh 11.1V');
+    mkElec(new THREE.BoxGeometry(0.22, 0.06, 0.22), 0x9b59b6, [0.8, 0.05, 0], 'Flight Controller', '6-ch Receiver');
+    mkElec(new THREE.BoxGeometry(0.12, 0.1, 0.08), 0xf1c40f, [wingX - rootC * 0.4, 0, 1.8], 'R Aileron Servo', '9g 1.8kg·cm');
+    mkElec(new THREE.BoxGeometry(0.12, 0.1, 0.08), 0xf1c40f, [wingX - rootC * 0.4, 0, -1.8], 'L Aileron Servo', '9g 1.8kg·cm');
+    mkElec(new THREE.BoxGeometry(0.12, 0.1, 0.08), 0xf1c40f, [-0.6, -0.05, 0.9], 'R Ruddervator Servo', 'V-tail');
+    mkElec(new THREE.BoxGeometry(0.12, 0.1, 0.08), 0xf1c40f, [-0.6, -0.05, -0.9], 'L Ruddervator Servo', 'V-tail');
+    mkElec(new THREE.SphereGeometry(0.11, 8, 6), 0x1abc9c, [1.9, -0.3, 0], 'EO/IR Camera Turret', 'Optical Payload');
 
     scene.add(electronicsGroup);
 
     // Wiring
     const wireMat = new THREE.LineBasicMaterial({ color: 0x1abc9c, linewidth: 2 });
-    const powerWireMat = new THREE.LineBasicMaterial({ color: 0xe74c3c, linewidth: 2 });
+    const powerMat = new THREE.LineBasicMaterial({ color: 0xe74c3c, linewidth: 2 });
 
-    const wire1 = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(0.15, -0.05, 0),
-      new THREE.Vector3(-0.4, -0.05, 0)
-    ]);
-    wiringGroup.add(new THREE.Line(wire1, powerWireMat));
-
-    const wire2 = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(-0.4, -0.05, 0),
-      new THREE.Vector3(-0.85, 0, 0)
-    ]);
-    wiringGroup.add(new THREE.Line(wire2, powerWireMat));
-
-    const wireRServo = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(0.8, 0.05, 0),
-      new THREE.Vector3(0.2, 0.05, 0),
-      new THREE.Vector3(wingX - rootC * 0.4, 0, 1.8)
-    ]);
-    wiringGroup.add(new THREE.Line(wireRServo, wireMat));
-
-    const wireLServo = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(0.8, 0.05, 0),
-      new THREE.Vector3(0.2, 0.05, 0),
-      new THREE.Vector3(wingX - rootC * 0.4, 0, -1.8)
-    ]);
-    wiringGroup.add(new THREE.Line(wireLServo, wireMat));
+    const addWire = (pts, mat) => {
+      wiringGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat));
+    };
+    addWire([new THREE.Vector3(0.15, -0.05, 0), new THREE.Vector3(-0.4, -0.05, 0)], powerMat);
+    addWire([new THREE.Vector3(-0.4, -0.05, 0), new THREE.Vector3(-0.85, 0, 0)], powerMat);
+    addWire([new THREE.Vector3(0.8, 0.05, 0), new THREE.Vector3(0.2, 0.05, 0), new THREE.Vector3(wingX - rootC * 0.4, 0, 1.8)], wireMat);
+    addWire([new THREE.Vector3(0.8, 0.05, 0), new THREE.Vector3(0.2, 0.05, 0), new THREE.Vector3(wingX - rootC * 0.4, 0, -1.8)], wireMat);
 
     scene.add(wiringGroup);
   }
 
-  function addWireframeEdges(mesh, opacity) {
-    const edges = new THREE.LineSegments(
+  function addEdges(mesh, opacity) {
+    mesh.add(new THREE.LineSegments(
       new THREE.EdgesGeometry(mesh.geometry, 20),
       new THREE.LineBasicMaterial({ color: 0x888888, transparent: true, opacity: opacity || 0.3 })
-    );
-    mesh.add(edges);
+    ));
   }
 
   /* ────────────────────────────────────────────────────────────
-     CONTROL LOGIC & FLIGHT COMPUTER MIXING
+     KEYBOARD INPUT
      ──────────────────────────────────────────────────────────── */
 
   const keysPressed = {};
@@ -460,11 +456,14 @@ const FlightSim3D = (() => {
       keysPressed[e.key.toLowerCase()] = true;
       manualOverride = false;
     });
-
     window.addEventListener('keyup', (e) => {
       keysPressed[e.key.toLowerCase()] = false;
     });
   }
+
+  /* ────────────────────────────────────────────────────────────
+     FLIGHT COMPUTER MIXING & SURFACE DEFLECTION
+     ──────────────────────────────────────────────────────────── */
 
   function updateControlInputs() {
     const maxDeg = 25;
@@ -473,157 +472,146 @@ const FlightSim3D = (() => {
       const step = 0.08;
       const decay = 0.1;
 
-      // Pitch: W / ArrowUp (+) vs S / ArrowDown (-)
       if (keysPressed['w'] || keysPressed['arrowup']) input.pitch = Math.min(1, input.pitch + step);
       else if (keysPressed['s'] || keysPressed['arrowdown']) input.pitch = Math.max(-1, input.pitch - step);
       else input.pitch *= (1 - decay);
 
-      // Roll: D / ArrowRight (Roll Right: Right Up, Left Down) vs A / ArrowLeft (Roll Left)
       if (keysPressed['d'] || keysPressed['arrowright']) input.roll = Math.min(1, input.roll + step);
       else if (keysPressed['a'] || keysPressed['arrowleft']) input.roll = Math.max(-1, input.roll - step);
       else input.roll *= (1 - decay);
 
-      // Yaw: E (Yaw Right) vs Q (Yaw Left)
       if (keysPressed['e']) input.yaw = Math.min(1, input.yaw + step);
       else if (keysPressed['q']) input.yaw = Math.max(-1, input.yaw - step);
       else input.yaw *= (1 - decay);
 
-      // Throttle: R/Shift vs F/Ctrl
       if (keysPressed['r'] || keysPressed['shift']) input.throttle = Math.min(1, input.throttle + 0.02);
       if (keysPressed['f'] || keysPressed['control']) input.throttle = Math.max(0, input.throttle - 0.02);
 
-      // Flight Computer Surface Deflections:
+      // ──── SURFACE MIXING ────
       // Roll: Right Aileron UP (+), Left Aileron DOWN (-)
       angles.rAileron = input.roll * maxDeg;
       angles.lAileron = -input.roll * maxDeg;
 
-      // Ruddervators (Pitch + Yaw Mixing per Wikipedia / Bayraktar TB2 FCS):
-      // Pitch UP (+): Both Ruddervators deflect UP (+)
-      // Yaw RIGHT (+): Right Ruddervator UP (+), Left Ruddervator DOWN (-)
+      // Pitch + Yaw → Ruddervators
+      // Pitch UP: both deflect UP together
+      // Yaw RIGHT: right UP, left DOWN (differential)
       angles.rRuddervator = (input.pitch + input.yaw) * maxDeg;
       angles.lRuddervator = (input.pitch - input.yaw) * maxDeg;
 
-      angles.rAileron = Math.max(-maxDeg, Math.min(maxDeg, angles.rAileron));
-      angles.lAileron = Math.max(-maxDeg, Math.min(maxDeg, angles.lAileron));
-      angles.rRuddervator = Math.max(-maxDeg, Math.min(maxDeg, angles.rRuddervator));
-      angles.lRuddervator = Math.max(-maxDeg, Math.min(maxDeg, angles.lRuddervator));
+      // Clamp
+      const clamp = (v) => Math.max(-maxDeg, Math.min(maxDeg, v));
+      angles.rAileron = clamp(angles.rAileron);
+      angles.lAileron = clamp(angles.lAileron);
+      angles.rRuddervator = clamp(angles.rRuddervator);
+      angles.lRuddervator = clamp(angles.lRuddervator);
     }
 
-    // Apply Deflections along Local Z-Axis Hinge Line:
-    if (rAileronMesh) rAileronMesh.rotation.z = THREE.MathUtils.degToRad(-angles.rAileron);
-    if (lAileronMesh) lAileronMesh.rotation.z = THREE.MathUtils.degToRad(angles.lAileron);
+    // ──── APPLY DEFLECTIONS ────
+    // Rotation axis = local Z (spanwise hinge line)
+    // For our wedge geometry: -X is trailing edge.
+    // Positive Z rotation = trailing edge moves DOWN (right-hand rule: +X → +Y, so -X → -Y)
+    // We want: positive angle = trailing edge UP = NEGATIVE Z rotation.
 
-    if (rRuddervatorMesh) rRuddervatorMesh.rotation.z = THREE.MathUtils.degToRad(-angles.rRuddervator);
-    if (lRuddervatorMesh) lRuddervatorMesh.rotation.z = THREE.MathUtils.degToRad(angles.lRuddervator);
+    // Right aileron: positive angle = TE up = negative Z rotation
+    if (rAileronMesh) {
+      rAileronMesh.rotation.z = THREE.MathUtils.degToRad(-angles.rAileron);
+    }
+    // Left aileron: mirrored geometry, so SAME sign convention needed
+    // -angles.lAileron ensures opposite visual deflection from right aileron
+    if (lAileronMesh) {
+      lAileronMesh.rotation.z = THREE.MathUtils.degToRad(-angles.lAileron);
+    }
 
-    // Propeller Rotation
+    // Right ruddervator: positive angle = TE up
+    if (rRuddervatorMesh) {
+      rRuddervatorMesh.rotation.z = THREE.MathUtils.degToRad(-angles.rRuddervator);
+    }
+    // Left ruddervator: mirrored geometry, so needs negative Z rotation as well
+    if (lRuddervatorMesh) {
+      lRuddervatorMesh.rotation.z = THREE.MathUtils.degToRad(-angles.lRuddervator);
+    }
+
+    // Propeller
     if (propGroup) propGroup.rotation.x += input.throttle * 0.4;
 
-    updateUIIndicators();
+    updateUI();
   }
 
-  function updateUIIndicators() {
-    const elR = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+  function updateUI() {
+    const set = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+    set('sim-r-aileron', angles.rAileron.toFixed(1) + '°');
+    set('sim-l-aileron', angles.lAileron.toFixed(1) + '°');
+    set('sim-r-ruddervator', angles.rRuddervator.toFixed(1) + '°');
+    set('sim-l-ruddervator', angles.lRuddervator.toFixed(1) + '°');
+    set('sim-throttle-val', Math.round(input.throttle * 100) + '%');
 
-    elR('sim-r-aileron', angles.rAileron.toFixed(1) + '°');
-    elR('sim-l-aileron', angles.lAileron.toFixed(1) + '°');
-    elR('sim-r-ruddervator', angles.rRuddervator.toFixed(1) + '°');
-    elR('sim-l-ruddervator', angles.lRuddervator.toFixed(1) + '°');
-    elR('sim-throttle-val', Math.round(input.throttle * 100) + '%');
+    const setSlider = (id, val) => { const s = document.getElementById(id); if (s && document.activeElement !== s) s.value = val; };
+    setSlider('slider-r-aileron', angles.rAileron);
+    setSlider('slider-l-aileron', angles.lAileron);
+    setSlider('slider-r-ruddervator', angles.rRuddervator);
+    setSlider('slider-l-ruddervator', angles.lRuddervator);
 
-    const setSliderVal = (id, val) => { const s = document.getElementById(id); if (s && document.activeElement !== s) s.value = val; };
-    setSliderVal('slider-r-aileron', angles.rAileron);
-    setSliderVal('slider-l-aileron', angles.lAileron);
-    setSliderVal('slider-r-ruddervator', angles.rRuddervator);
-    setSliderVal('slider-l-ruddervator', angles.lRuddervator);
-
-    const pitchDeg = input.pitch * 20;
-    const rollDeg = input.roll * 30;
     const horizon = document.getElementById('attitude-horizon');
     if (horizon) {
-      horizon.style.transform = `translateY(${pitchDeg}px) rotate(${-rollDeg}deg)`;
+      horizon.style.transform = `translateY(${input.pitch * 20}px) rotate(${-input.roll * 30}deg)`;
     }
   }
 
   /* ────────────────────────────────────────────────────────────
-     DISPLAY MODES & CONTROLS
+     DISPLAY MODES
      ──────────────────────────────────────────────────────────── */
 
   function setDisplayMode(mode) {
     displayMode = mode;
-
     airframeGroup.traverse(child => {
       if (child.isMesh) {
         if (mode === 'solid') {
-          child.material.opacity = 1.0;
-          child.material.transparent = false;
-          child.material.depthWrite = true;
-          child.material.wireframe = false;
+          child.material.opacity = 1.0; child.material.transparent = false;
+          child.material.depthWrite = true; child.material.wireframe = false;
         } else if (mode === 'xray') {
-          child.material.opacity = 0.25;
-          child.material.transparent = true;
-          child.material.depthWrite = false;
-          child.material.wireframe = false;
-        } else if (mode === 'electronics') {
-          child.material.opacity = 0.08;
-          child.material.transparent = true;
-          child.material.depthWrite = false;
-          child.material.wireframe = true;
+          child.material.opacity = 0.25; child.material.transparent = true;
+          child.material.depthWrite = false; child.material.wireframe = false;
+        } else {
+          child.material.opacity = 0.08; child.material.transparent = true;
+          child.material.depthWrite = false; child.material.wireframe = true;
         }
       }
     });
-
     electronicsGroup.traverse(child => {
-      if (child.isMesh) {
-        child.material.opacity = mode === 'solid' ? 0.7 : 1.0;
-      }
+      if (child.isMesh) child.material.opacity = mode === 'solid' ? 0.7 : 1.0;
     });
   }
 
   function setIndividualSurface(surface, degVal) {
     manualOverride = true;
-    const val = parseFloat(degVal);
-    if (surface in angles) {
-      angles[surface] = val;
-    }
+    if (surface in angles) angles[surface] = parseFloat(degVal);
   }
 
   function setMasterInput(type, val) {
     manualOverride = false;
-    if (type in input) {
-      input[type] = parseFloat(val);
-    }
+    if (type in input) input[type] = parseFloat(val);
   }
 
   function resetControls() {
     manualOverride = false;
-    input.pitch = 0;
-    input.roll = 0;
-    input.yaw = 0;
+    input.pitch = input.roll = input.yaw = 0;
     input.throttle = 0.4;
-    angles.rAileron = 0;
-    angles.lAileron = 0;
-    angles.rRuddervator = 0;
-    angles.lRuddervator = 0;
+    angles.rAileron = angles.lAileron = angles.rRuddervator = angles.lRuddervator = 0;
   }
 
   function onResize() {
     if (!container) return;
-    const w = container.clientWidth;
-    const h = container.clientHeight;
-    camera.aspect = w / h;
+    camera.aspect = container.clientWidth / container.clientHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(w, h);
+    renderer.setSize(container.clientWidth, container.clientHeight);
   }
 
   function animate() {
     requestAnimationFrame(animate);
     controls.update();
-
     if (document.getElementById('page-flight-sim')?.classList.contains('page-active')) {
       updateControlInputs();
     }
-
     renderer.render(scene, camera);
   }
 

@@ -58,25 +58,40 @@ const Calc = (() => {
 
   /* ── Electronics Weight (grams) ── */
   function electronicsWeight() {
-    const motor    = _getTier('motor',    AppState.get('motor'));
-    const esc      = _getTier('esc',      AppState.get('esc'));
-    const battery  = _getTier('battery',  AppState.get('battery'));
-    const servo    = _getTier('servo',    AppState.get('servo'));
-    const prop     = _getTier('prop',     AppState.get('prop'));
-    const receiver = _getTier('receiver', AppState.get('receiver'));
-    const fpv      = _getTier('fpv',      AppState.get('fpv'));
+    const motor       = _getTier('motor',       AppState.get('motor'));
+    const esc         = _getTier('esc',         AppState.get('esc'));
+    const battery     = _getTier('battery',     AppState.get('battery'));
+    const servo       = _getTier('servo',       AppState.get('servo'));
+    const prop        = _getTier('prop',        AppState.get('prop'));
+    const receiver    = _getTier('receiver',    AppState.get('receiver'));
+    const transmitter = _getTier('transmitter', AppState.get('transmitter'));
+    const bec         = _getTier('bec',         AppState.get('bec'));
+    const wiring      = _getTier('wiring',      AppState.get('wiring'));
+    const voltmonitor = _getTier('voltmonitor', AppState.get('voltmonitor'));
 
-    const servoTotal = servo.weight * (servo.qty || 3);
+    const servoTotal = servo ? (servo.weight * (servo.qty || 3)) : 0;
+    const motorW     = motor ? motor.weight : 0;
+    const escW       = esc ? esc.weight : 0;
+    const batteryW   = battery ? battery.weight : 0;
+    const propW      = prop ? prop.weight : 0;
+    const rxW        = receiver ? receiver.weight : 0;
+    const txW        = transmitter ? transmitter.weight : 0;
+    const becW       = bec ? bec.weight : 0;
+    const wireW      = wiring ? wiring.weight : 0;
+    const vmonW      = voltmonitor ? voltmonitor.weight : 0;
 
     return {
-      motor: motor.weight,
-      esc: esc.weight,
-      battery: battery.weight,
+      motor: motorW,
+      esc: escW,
+      battery: batteryW,
       servos: servoTotal,
-      prop: prop.weight,
-      receiver: receiver.weight,
-      fpv: fpv ? fpv.weight : 0,
-      total: motor.weight + esc.weight + battery.weight + servoTotal + prop.weight + receiver.weight + (fpv ? fpv.weight : 0)
+      prop: propW,
+      receiver: rxW,
+      transmitter: txW,
+      bec: becW,
+      wiring: wireW,
+      voltmonitor: vmonW,
+      total: motorW + escW + batteryW + servoTotal + propW + rxW + txW + becW + wireW + vmonW
     };
   }
 
@@ -184,18 +199,18 @@ const Calc = (() => {
   /* ── Total Cost ── */
   function totalCost() {
     const costs = {};
-    ['motor', 'esc', 'battery', 'prop', 'receiver', 'fpv'].forEach(cat => {
+    ['motor', 'esc', 'battery', 'prop', 'receiver', 'transmitter', 'bec', 'wiring', 'voltmonitor'].forEach(cat => {
       const tier = _getTier(cat, AppState.get(cat));
       costs[cat] = tier ? tier.price : 0;
     });
     const servo = _getTier('servo', AppState.get('servo'));
-    costs.servos = servo.price * (servo.qty || 3);
+    costs.servos = servo ? (servo.price * (servo.qty || 3)) : 0;
 
     // Material costs
     const partKeys = ['fuselage', 'wing', 'tail', 'mount'];
     partKeys.forEach((pk, i) => {
       const mat = _getMaterial(AppState.get('mat_' + pk));
-      costs['mat_' + pk] = mat.costPerPart[i];
+      costs['mat_' + pk] = mat ? mat.costPerPart[i] : 0;
     });
 
     costs.misc = PlaneData.miscCost;

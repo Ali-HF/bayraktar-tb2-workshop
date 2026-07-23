@@ -111,7 +111,7 @@ const Charts = (() => {
       data: {
         labels: [],
         datasets: [{
-          label: 'Cost ($)',
+          label: 'Cost (PKR)',
           data: [],
           backgroundColor: 'rgba(232, 168, 124, 0.7)',
           borderColor: '#e8a87c',
@@ -228,7 +228,8 @@ const Charts = (() => {
 
     const labelMap = {
       motor: 'Motor', esc: 'ESC', battery: 'Battery', servos: 'Servos',
-      prop: 'Propeller', receiver: 'Receiver', fpv: 'FPV',
+      prop: 'Propeller', receiver: 'Receiver', transmitter: 'Transmitter',
+      bec: 'BEC', wiring: 'Wiring', voltmonitor: 'Volt. Monitor',
       mat_fuselage: 'Fuselage Mat.', mat_wing: 'Wing Mat.',
       mat_tail: 'Tail Mat.', mat_mount: 'Mount Mat.', misc: 'Hardware/Misc'
     };

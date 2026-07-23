@@ -1,9 +1,13 @@
 /* ============================================================
    Bayraktar TB2 — Component Data & Material Specs
+   ============================================================
+   Prices in PKR (Pakistani Rupees) — sourced from components.md
    ============================================================ */
 
 const PlaneData = {
   name: 'Bayraktar TB2',
+  currency: 'PKR',  // Pakistani Rupees
+
   /* ── Aircraft Dimensions (mm) ── */
   dimensions: {
     wingspan:          1000,
@@ -26,66 +30,91 @@ const PlaneData = {
     motorMountDia:       32   // midpoint 28-35
   },
 
-  /* ── Electronics Tiers ── */
+  /* ── Electronics Tiers (Prices in PKR) ── */
   electronics: {
     motor: {
       label: 'Motor',
       tiers: [
-        { id: 'motor-budget',  name: 'Emax 2213-935KV',       kv: 935,  watts: 180, maxCurrent: 15, weight: 56, thrust_g: 680,  price: 12,  desc: 'Budget trainer motor' },
-        { id: 'motor-mid',     name: 'Sunnysky 2216-1100KV',   kv: 1100, watts: 250, maxCurrent: 22, weight: 68, thrust_g: 920,  price: 22,  desc: 'Mid-range sport motor' },
-        { id: 'motor-high',    name: 'T-Motor AT2317-1400KV',  kv: 1400, watts: 380, maxCurrent: 30, weight: 72, thrust_g: 1200, price: 38,  desc: 'High-performance motor' }
+        { id: 'motor-budget', name: 'A2212 1400KV',             kv: 1400, watts: 180, maxCurrent: 15, weight: 48, thrust_g: 680,  price: 1575,  desc: 'Budget brushless motor' },
+        { id: 'motor-mid',    name: 'Emax GT2826-04 1090KV',    kv: 1090, watts: 250, maxCurrent: 22, weight: 175, thrust_g: 920, price: 7200,  desc: 'Mid-range sport motor' },
+        { id: 'motor-high',   name: 'SunnySky X2814 900KV',     kv: 900,  watts: 380, maxCurrent: 30, weight: 108, thrust_g: 1200, price: 10500, desc: 'Premium imported motor' }
       ]
     },
     esc: {
       label: 'ESC',
       tiers: [
-        { id: 'esc-budget', name: 'Hobbyking 20A',        currentRating: 20, weight: 18, price: 8,   desc: '20A brushless ESC' },
-        { id: 'esc-mid',    name: 'Racerstar RS30A V2',   currentRating: 30, weight: 26, price: 14,  desc: '30A ESC w/ BEC' },
-        { id: 'esc-high',   name: 'Hobbywing Skywalker 40A', currentRating: 40, weight: 38, price: 25, desc: '40A ESC, reliable' }
+        { id: 'esc-budget', name: 'Generic SimonK 30A',           currentRating: 30, weight: 27, price: 1900,  desc: '30A brushless ESC' },
+        { id: 'esc-mid',    name: 'Hobbywing Skywalker V2 60A',   currentRating: 60, weight: 63, price: 6700,  desc: '60A ESC w/ built-in BEC' },
+        { id: 'esc-high',   name: 'Hobbywing Platinum 60A Pro',   currentRating: 60, weight: 38, price: 16500, desc: '60A Pro ESC, imported' }
       ]
     },
     battery: {
       label: 'Battery (LiPo)',
       tiers: [
-        { id: 'bat-budget', name: 'Turnigy 1300mAh 3S 25C', capacity: 1300, cells: 3, voltage: 11.1, cRating: 25, weight: 108, price: 12,  desc: 'Light 3S pack' },
-        { id: 'bat-mid',    name: 'Tattu 2200mAh 3S 45C',   capacity: 2200, cells: 3, voltage: 11.1, cRating: 45, weight: 185, price: 24,  desc: 'Endurance 3S pack' },
-        { id: 'bat-high',   name: 'Tattu 2200mAh 4S 45C',   capacity: 2200, cells: 4, voltage: 14.8, cRating: 45, weight: 242, price: 35,  desc: 'High-voltage 4S pack' }
+        { id: 'bat-budget', name: 'Generic 3S 2200mAh 25C', capacity: 2200, cells: 3, voltage: 11.1, cRating: 25, weight: 188, price: 3500,  desc: '3S budget LiPo pack' },
+        { id: 'bat-mid',    name: '3S 2200mAh 30C',          capacity: 2200, cells: 3, voltage: 11.1, cRating: 30, weight: 180, price: 5800,  desc: '3S mid-range LiPo' },
+        { id: 'bat-high',   name: 'Tattu/CNHL 3S 2200mAh 45C', capacity: 2200, cells: 3, voltage: 11.1, cRating: 45, weight: 200, price: 7000, desc: '3S high-C rated LiPo' }
       ]
     },
     servo: {
       label: 'Servos (×3)',
       tiers: [
-        { id: 'servo-budget', name: 'TowerPro SG90 (9g)',     torque: 1.8, speed: 0.10, weight: 9,   price: 3,  qty: 3, desc: '9g micro servo' },
-        { id: 'servo-mid',    name: 'Emax ES08MA II (12g)',    torque: 2.0, speed: 0.08, weight: 12,  price: 6,  qty: 3, desc: '12g digital servo' },
-        { id: 'servo-high',   name: 'Savox SH-0257MG (17g)',  torque: 2.2, speed: 0.06, weight: 17,  price: 14, qty: 3, desc: '17g metal-gear servo' }
+        { id: 'servo-budget', name: 'SG90 9g Plastic Gear',       torque: 1.8, speed: 0.10, weight: 9,  price: 400,   qty: 3, desc: '9g micro servo' },
+        { id: 'servo-mid',    name: 'MG90S 9g Metal Gear',        torque: 2.0, speed: 0.08, weight: 9,  price: 625,   qty: 3, desc: '9g metal gear servo' },
+        { id: 'servo-high',   name: 'Emax ES08MA II 12g Digital', torque: 2.2, speed: 0.06, weight: 12, price: 1500,  qty: 3, desc: '12g digital metal gear' }
       ]
     },
     prop: {
-      label: 'Propeller',
+      label: 'Propeller + Adapter',
       tiers: [
-        { id: 'prop-budget', name: 'GWS 8×4 SlowFly',       diameter: 8, pitch: 4, weight: 8,  price: 2,  desc: 'Efficient trainer prop' },
-        { id: 'prop-mid',    name: 'APC 9×6 Electric',       diameter: 9, pitch: 6, weight: 12, price: 4,  desc: 'Sport all-rounder' },
-        { id: 'prop-high',   name: 'APC 10×5 Thin Electric', diameter: 10, pitch: 5, weight: 14, price: 5, desc: 'High-thrust prop' }
+        { id: 'prop-budget', name: 'Generic Prop Adapter',     diameter: 8,  pitch: 4, weight: 8,  price: 225,  desc: 'Universal adapter' },
+        { id: 'prop-mid',    name: 'Prop Saver 28-35mm',       diameter: 9,  pitch: 6, weight: 12, price: 375,  desc: 'Prop saver mount' },
+        { id: 'prop-high',   name: 'APC 10×6E + Adapter',      diameter: 10, pitch: 6, weight: 20, price: 1500, desc: 'Precision APC prop' }
       ]
     },
     receiver: {
       label: 'Receiver',
       tiers: [
-        { id: 'rx-budget', name: 'FlySky FS-iA6B',    channels: 6,  weight: 7,  price: 14, desc: '6-ch PWM/iBus' },
-        { id: 'rx-mid',    name: 'FrSky X8R',          channels: 8,  weight: 12, price: 28, desc: '8-ch SBUS + telemetry' }
+        { id: 'rx-budget', name: 'FlySky FS-A8S (Mini)',   channels: 6,  weight: 1,  price: 2500,  desc: '6-ch mini iBus RX' },
+        { id: 'rx-mid',    name: 'FlySky FS-iA6B',         channels: 6,  weight: 15, price: 2500,  desc: '6-ch PWM/iBus RX' },
+        { id: 'rx-high',   name: 'FrSky R-XSR',            channels: 16, weight: 2,  price: 6250,  desc: '16-ch SBUS + telemetry' }
       ]
     },
-    fpv: {
-      label: 'FPV Add-on',
-      optional: true,
+    transmitter: {
+      label: 'Transmitter (TX)',
       tiers: [
-        { id: 'fpv-none', name: 'None',                    weight: 0,  price: 0,  desc: 'No FPV' },
-        { id: 'fpv-basic', name: 'Caddx Ant + VTX03S',     weight: 14, price: 35, desc: 'Basic FPV (25-200mW)' }
+        { id: 'tx-budget', name: 'FlySky FS-i6 (6-ch)',    channels: 6,  weight: 392, price: 12000, desc: '6-ch, often bundled w/ RX' },
+        { id: 'tx-mid',    name: 'FlySky FS-i6X (10-ch)',   channels: 10, weight: 392, price: 9000,  desc: '10-ch upgraded TX' },
+        { id: 'tx-high',   name: 'Radiomaster TX16S',       channels: 16, weight: 736, price: 85000, desc: 'Premium multi-protocol TX' }
+      ]
+    },
+    bec: {
+      label: 'BEC (5V Regulator)',
+      tiers: [
+        { id: 'bec-budget', name: 'Standalone UBEC 5V/3A',       weight: 30, price: 1100,  desc: 'External switch-mode BEC' },
+        { id: 'bec-mid',    name: 'Built-in ESC BEC (5V/3A)',    weight: 0,  price: 0,     desc: 'Included in Skywalker ESC' },
+        { id: 'bec-high',   name: 'Matek BEC 5V/12V Dual',      weight: 30, price: 9000,  desc: 'Dual-output precision BEC' }
+      ]
+    },
+    wiring: {
+      label: 'Wiring & Connectors',
+      tiers: [
+        { id: 'wire-budget', name: '16-20 AWG + Deans',    weight: 15, price: 200,  desc: 'Generic wire + Deans connector' },
+        { id: 'wire-mid',    name: '14-18 AWG + XT60',     weight: 18, price: 225,  desc: 'Silicon wire + XT60 connector' },
+        { id: 'wire-high',   name: '12-14 AWG + XT90',     weight: 22, price: 500,  desc: 'Heavy duty wire + XT90' }
+      ]
+    },
+    voltmonitor: {
+      label: 'Voltage Monitor',
+      tiers: [
+        { id: 'vmon-budget', name: 'Generic LiPo Alarm',       weight: 5, price: 350,  desc: 'Basic low-voltage alarm' },
+        { id: 'vmon-mid',    name: '3S LiPo Alarm w/ Buzzer',  weight: 7, price: 550,  desc: 'Buzzer alarm, 2S-3S' },
+        { id: 'vmon-high',   name: 'Telemetry Voltage Sensor',  weight: 5, price: 2500, desc: 'TX display (needs FrSky)' }
       ]
     }
   },
 
-  /* ── Materials ── */
+  /* ── Materials (costs in PKR) ── */
   materials: {
     fuselage: { label: 'Fuselage', surfaceArea_cm2: 600, thickness_mm: 2 },
     wing:     { label: 'Wing',     surfaceArea_cm2: 800, thickness_mm: 1.5 },
@@ -94,28 +123,31 @@ const PlaneData = {
   },
 
   materialOptions: [
-    { id: 'balsa',        name: 'Balsa Wood',        density: 0.16,  costPerPart: [8, 6, 3, 2],    strength: 2, color: '#d4b483', desc: 'Lightest wood, easy to cut' },
-    { id: 'plywood',      name: 'Plywood (Birch)',   density: 0.55,  costPerPart: [5, 4, 2, 3],    strength: 4, color: '#8B6914', desc: 'Strong at mounts/firewall' },
-    { id: 'foam',         name: 'EPP/EPO Foam',      density: 0.03,  costPerPart: [6, 5, 2, 1],    strength: 3, color: '#b8d4e3', desc: 'Very light, impact-resistant' },
-    { id: 'fiberglass',   name: 'Fiberglass',        density: 1.80,  costPerPart: [15, 12, 5, 4],  strength: 7, color: '#e8e8d0', desc: 'Light-medium, very strong' },
-    { id: 'carbonfiber',  name: 'Carbon Fiber',      density: 1.55,  costPerPart: [30, 25, 10, 8], strength: 9, color: '#3a3a3a', desc: 'Best strength-to-weight ratio' }
+    { id: 'balsa',        name: 'Balsa Wood',        density: 0.16,  costPerPart: [2200, 1700, 850, 550],    strength: 2, color: '#d4b483', desc: 'Lightest wood, easy to cut' },
+    { id: 'plywood',      name: 'Plywood (Birch)',   density: 0.55,  costPerPart: [1400, 1100, 550, 850],    strength: 4, color: '#8B6914', desc: 'Strong at mounts/firewall' },
+    { id: 'foam',         name: 'EPP/EPO Foam',      density: 0.03,  costPerPart: [1700, 1400, 550, 280],    strength: 3, color: '#b8d4e3', desc: 'Very light, impact-resistant' },
+    { id: 'fiberglass',   name: 'Fiberglass',        density: 1.80,  costPerPart: [4200, 3400, 1400, 1100],  strength: 7, color: '#e8e8d0', desc: 'Light-medium, very strong' },
+    { id: 'carbonfiber',  name: 'Carbon Fiber',      density: 1.55,  costPerPart: [8400, 7000, 2800, 2200],  strength: 9, color: '#3a3a3a', desc: 'Best strength-to-weight ratio' }
   ],
 
-  /** Hardware & misc allowance */
-  miscCost: 15,
+  /** Hardware & misc allowance (PKR) */
+  miscCost: 4000,
   miscWeight: 30   // grams: glue, connectors, wiring, screws
 };
 
 /* ── Default Selections ── */
 const DEFAULT_STATE = {
   // Electronics (tier indices: 0=budget, 1=mid, 2=high)
-  motor:    'motor-budget',
-  esc:      'esc-budget',
-  battery:  'bat-budget',
-  servo:    'servo-budget',
-  prop:     'prop-budget',
-  receiver: 'rx-budget',
-  fpv:      'fpv-none',
+  motor:      'motor-budget',
+  esc:        'esc-budget',
+  battery:    'bat-budget',
+  servo:      'servo-budget',
+  prop:       'prop-budget',
+  receiver:   'rx-budget',
+  transmitter:'tx-budget',
+  bec:        'bec-budget',
+  wiring:     'wire-budget',
+  voltmonitor:'vmon-budget',
 
   // Materials (per part)
   mat_fuselage: 'foam',

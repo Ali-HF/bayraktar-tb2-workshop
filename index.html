@@ -82,7 +82,7 @@
       </div>
       <div class="hero-spec">
         <div class="hero-spec-value" id="hero-cost">--</div>
-        <div class="hero-spec-label">Est. Cost ($)</div>
+        <div class="hero-spec-label">Est. Cost (PKR)</div>
       </div>
     </div>
 
@@ -432,7 +432,7 @@
   <!-- Total -->
   <div class="budget-total">
     <div class="budget-total-label">Estimated Total Cost</div>
-    <div class="budget-total-value"><span class="currency">$</span><span id="budget-total-number">0</span></div>
+    <div class="budget-total-value"><span class="currency">Rs. </span><span id="budget-total-number">0</span></div>
   </div>
 
   <!-- Budget Target Slider -->
@@ -444,9 +444,9 @@
     <div class="slider-group">
       <div class="slider-label">
         <span>Target Budget</span>
-        <strong>$<span id="budget-target-val">200</span></strong>
+        <strong>Rs. <span id="budget-target-val">45,000</span></strong>
       </div>
-      <input type="range" id="budget-target-slider" min="50" max="500" value="200" step="10">
+      <input type="range" id="budget-target-slider" min="15000" max="200000" value="45000" step="5000">
     </div>
     <div class="gauge-bar">
       <div class="gauge-track">
@@ -498,7 +498,7 @@
       <tfoot>
         <tr>
           <td colspan="4" style="font-weight:700; text-align:right;">Total</td>
-          <td class="mono" style="font-weight:700; color:var(--accent-warm);" id="budget-table-total">$0</td>
+          <td class="mono" style="font-weight:700; color:var(--accent-warm);" id="budget-table-total">Rs. 0</td>
         </tr>
       </tfoot>
     </table>
@@ -713,14 +713,15 @@
 <!-- ════════════════════════════════════════════════════════════
      SCRIPTS
      ════════════════════════════════════════════════════════════ -->
-<script src="js/state.js?v=7"></script>
-<script src="js/data.js?v=7"></script>
-<script src="js/calculations.js?v=7"></script>
-<script src="js/router.js?v=7"></script>
-<script src="js/aircraft3d.js?v=7"></script>
-<script src="js/charts.js?v=7"></script>
-<script src="js/airfoil.js?v=7"></script>
-<script src="js/flightSim3d.js?v=7"></script>
+<script src="js/state.js?v=8"></script>
+<script src="js/data.js?v=8"></script>
+<script src="js/grid.js?v=8"></script>
+<script src="js/calculations.js?v=8"></script>
+<script src="js/router.js?v=8"></script>
+<script src="js/aircraft3d.js?v=8"></script>
+<script src="js/charts.js?v=8"></script>
+<script src="js/airfoil.js?v=8"></script>
+<script src="js/flightSim3d.js?v=8"></script>
 
 <script>
 /* ============================================================
@@ -841,128 +842,128 @@
       const selected = AppState.get(key);
       const tier = cat.tiers.find(t => t.id === selected) || cat.tiers[0];
 
-      item.innerHTML = `
-        <div class="component-label"><span class="icon">${getIcon(key)}</span> ${cat.label}</div>
-        <select class="selector" data-key="${key}">
-          ${cat.tiers.map(t => `<option value="${t.id}" ${t.id === selected ? 'selected' : ''}>${t.name}</option>`).join('')}
-        </select>
-        <div class="component-info">${tier.desc} — ${tier.weight}g, $${tier.price}</div>
-      `;
-
-      item.querySelector('select').addEventListener('change', (e) => {
-        AppState.set(key, e.target.value);
-        const newTier = cat.tiers.find(t => t.id === e.target.value);
-        item.querySelector('.component-info').textContent = `${newTier.desc} — ${newTier.weight}g, $${newTier.price}`;
-      });
-
-      container.appendChild(item);
-    });
-  }
-
-  function buildElectronicsPage() {
-    const grid = document.getElementById('electronics-grid');
-    if (!grid) return;
-    grid.innerHTML = '';
-
-    Object.entries(PlaneData.electronics).forEach(([key, cat]) => {
-      const card = document.createElement('div');
-      card.className = 'card';
-
-      const selected = AppState.get(key);
-
-      let specsHtml = cat.tiers.map(t => {
-        const isSelected = t.id === selected;
-        const specs = Object.entries(t)
-          .filter(([k]) => !['id','name','desc','price'].includes(k))
-          .map(([k,v]) => `<td class="mono">${v}${getUnit(k)}</td>`)
-          .join('');
-
-        return `<tr style="${isSelected ? 'background:rgba(232,168,124,0.06);' : ''}">
-          <td><strong>${t.name}</strong><br><span style="font-size:0.7rem;color:var(--text-muted);">${t.desc}</span></td>
-          ${specs}
-          <td class="mono" style="color:var(--accent-warm);font-weight:600;">$${t.price}</td>
-        </tr>`;
-      }).join('');
-
-      card.innerHTML = `
-        <div class="card-header">
-          <div class="card-title"><span class="dot" style="background:${getColor(key)}"></span> ${cat.label}</div>
-          ${cat.optional ? '<span class="badge badge-warn">Optional</span>' : ''}
-        </div>
-        <select class="selector" data-key="${key}" style="margin-bottom:16px;">
-          ${cat.tiers.map(t => `<option value="${t.id}" ${t.id === selected ? 'selected' : ''}>${t.name}</option>`).join('')}
-        </select>
-        <table class="data-table"><tbody>${specsHtml}</tbody></table>
-      `;
-
-      card.querySelector('select').addEventListener('change', (e) => {
-        AppState.set(key, e.target.value);
-        buildElectronicsPage();
-        buildElectronicsPanel();
-      });
-
-      grid.appendChild(card);
-    });
-  }
-
-  function buildMaterialsPanel() {
-    const container = document.getElementById('model-materials-panel');
-    if (!container) return;
-    container.innerHTML = '';
-
-    Object.entries(PlaneData.materials).forEach(([partKey, part]) => {
-      const item = document.createElement('div');
-      item.className = 'component-item';
-      const selected = AppState.get('mat_' + partKey);
-
-      item.innerHTML = `
-        <div class="component-label">🔧 ${part.label}</div>
-        <select class="selector" data-key="mat_${partKey}">
-          ${PlaneData.materialOptions.map(m => `<option value="${m.id}" ${m.id === selected ? 'selected' : ''}>${m.name}</option>`).join('')}
-        </select>
-      `;
-
-      item.querySelector('select').addEventListener('change', (e) => {
-        AppState.set('mat_' + partKey, e.target.value);
-        buildMaterialsPanel();
-        buildMaterialsPage();
-      });
-
-      container.appendChild(item);
-    });
-  }
-
-  function buildMaterialsPage() {
-    const grid = document.getElementById('materials-grid');
-    if (!grid) return;
-    grid.innerHTML = '';
-
-    Object.entries(PlaneData.materials).forEach(([partKey, part], partIdx) => {
-      const card = document.createElement('div');
-      card.className = 'card';
-      const selected = AppState.get('mat_' + partKey);
-
-      let optionsHtml = PlaneData.materialOptions.map(m => {
-        const isSelected = m.id === selected;
-        const strengthPips = Array.from({length: 10}, (_, i) =>
-          `<span class="pip ${i < m.strength ? 'filled' : ''}"></span>`
-        ).join('');
-
-        return `
-          <div class="material-option ${isSelected ? 'selected' : ''}" data-mat="${m.id}">
-            <div class="material-swatch" style="background:${m.color}"></div>
-            <div class="material-info" style="flex:1;">
-              <h4>${m.name}</h4>
-              <p>${m.desc}</p>
-              <div class="strength-bar" title="Strength: ${m.strength}/10">${strengthPips}</div>
-            </div>
-            <div style="text-align:right; font-family:var(--font-mono); font-size:0.78rem;">
-              <div style="color:var(--accent-warm);">$${m.costPerPart[partIdx]}</div>
-              <div style="color:var(--text-muted); font-size:0.68rem;">${m.density} g/cm³</div>
-            </div>
-          </div>
+        item.innerHTML = `
+          <div class="component-label"><span class="icon">${getIcon(key)}</span> ${cat.label}</div>
+          <select class="selector" data-key="${key}">
+            ${cat.tiers.map(t => `<option value="${t.id}" ${t.id === selected ? 'selected' : ''}>${t.name}</option>`).join('')}
+          </select>
+          <div class="component-info">${tier.desc} — ${tier.weight}g, Rs. ${tier.price.toLocaleString()}</div>
         `;
-      }).join('');
+  
+        item.querySelector('select').addEventListener('change', (e) => {
+          AppState.set(key, e.target.value);
+          const newTier = cat.tiers.find(t => t.id === e.target.value);
+          item.querySelector('.component-info').textContent = `${newTier.desc} — ${newTier.weight}g, Rs. ${newTier.price.toLocaleString()}`;
+        });
+  
+        container.appendChild(item);
+      });
+    }
+  
+    function buildElectronicsPage() {
+      const grid = document.getElementById('electronics-grid');
+      if (!grid) return;
+      grid.innerHTML = '';
+  
+      Object.entries(PlaneData.electronics).forEach(([key, cat]) => {
+        const card = document.createElement('div');
+        card.className = 'card';
+  
+        const selected = AppState.get(key);
+  
+        let specsHtml = cat.tiers.map(t => {
+          const isSelected = t.id === selected;
+          const specs = Object.entries(t)
+            .filter(([k]) => !['id','name','desc','price'].includes(k))
+            .map(([k,v]) => `<td class="mono">${v}${getUnit(k)}</td>`)
+            .join('');
+  
+          return `<tr style="${isSelected ? 'background:rgba(232,168,124,0.06);' : ''}">
+            <td><strong>${t.name}</strong><br><span style="font-size:0.7rem;color:var(--text-muted);">${t.desc}</span></td>
+            ${specs}
+            <td class="mono" style="color:var(--accent-warm);font-weight:600;">Rs. ${t.price.toLocaleString()}</td>
+          </tr>`;
+        }).join('');
+  
+        card.innerHTML = `
+          <div class="card-header">
+            <div class="card-title"><span class="dot" style="background:${getColor(key)}"></span> ${cat.label}</div>
+            ${cat.optional ? '<span class="badge badge-warn">Optional</span>' : ''}
+          </div>
+          <select class="selector" data-key="${key}" style="margin-bottom:16px;">
+            ${cat.tiers.map(t => `<option value="${t.id}" ${t.id === selected ? 'selected' : ''}>${t.name}</option>`).join('')}
+          </select>
+          <table class="data-table"><tbody>${specsHtml}</tbody></table>
+        `;
+  
+        card.querySelector('select').addEventListener('change', (e) => {
+          AppState.set(key, e.target.value);
+          buildElectronicsPage();
+          buildElectronicsPanel();
+        });
+  
+        grid.appendChild(card);
+      });
+    }
+  
+    function buildMaterialsPanel() {
+      const container = document.getElementById('model-materials-panel');
+      if (!container) return;
+      container.innerHTML = '';
+  
+      Object.entries(PlaneData.materials).forEach(([partKey, part]) => {
+        const item = document.createElement('div');
+        item.className = 'component-item';
+        const selected = AppState.get('mat_' + partKey);
+  
+        item.innerHTML = `
+          <div class="component-label">🔧 ${part.label}</div>
+          <select class="selector" data-key="mat_${partKey}">
+            ${PlaneData.materialOptions.map(m => `<option value="${m.id}" ${m.id === selected ? 'selected' : ''}>${m.name}</option>`).join('')}
+          </select>
+        `;
+  
+        item.querySelector('select').addEventListener('change', (e) => {
+          AppState.set('mat_' + partKey, e.target.value);
+          buildMaterialsPanel();
+          buildMaterialsPage();
+        });
+  
+        container.appendChild(item);
+      });
+    }
+  
+    function buildMaterialsPage() {
+      const grid = document.getElementById('materials-grid');
+      if (!grid) return;
+      grid.innerHTML = '';
+  
+      Object.entries(PlaneData.materials).forEach(([partKey, part], partIdx) => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        const selected = AppState.get('mat_' + partKey);
+  
+        let optionsHtml = PlaneData.materialOptions.map(m => {
+          const isSelected = m.id === selected;
+          const strengthPips = Array.from({length: 10}, (_, i) =>
+            `<span class="pip ${i < m.strength ? 'filled' : ''}"></span>`
+          ).join('');
+  
+          return `
+            <div class="material-option ${isSelected ? 'selected' : ''}" data-mat="${m.id}">
+              <div class="material-swatch" style="background:${m.color}"></div>
+              <div class="material-info" style="flex:1;">
+                <h4>${m.name}</h4>
+                <p>${m.desc}</p>
+                <div class="strength-bar" title="Strength: ${m.strength}/10">${strengthPips}</div>
+              </div>
+              <div style="text-align:right; font-family:var(--font-mono); font-size:0.78rem;">
+                <div style="color:var(--accent-warm);">Rs. ${m.costPerPart[partIdx].toLocaleString()}</div>
+                <div style="color:var(--text-muted); font-size:0.68rem;">${m.density} g/cm³</div>
+              </div>
+            </div>
+          `;
+        }).join('');
 
       card.innerHTML = `
         <div class="card-header">
@@ -1021,7 +1022,7 @@
       { label: 'Thrust/Weight', value: report.thrustToWeight.value.toFixed(2), unit: 'ratio', status: report.thrustToWeight.status },
       { label: 'Flight Time', value: report.flightTime.value.toFixed(1), unit: 'min', status: '' },
       { label: 'Top Speed', value: report.topSpeed.kph.toFixed(0), unit: 'km/h', status: '' },
-      { label: 'Est. Cost', value: '$' + report.costs.total, status: '' },
+      { label: 'Est. Cost', value: 'Rs. ' + report.costs.total.toLocaleString(), status: '' },
       { label: 'C-Rating', value: report.cRatingCheck.pass ? 'PASS' : 'FAIL', status: report.cRatingCheck.pass ? 'green' : 'red' }
     ];
 
@@ -1117,8 +1118,8 @@
     if (tbody) {
       const rows = [];
 
-      // Electronics
-      ['motor','esc','battery','prop','receiver','fpv'].forEach(key => {
+      // Electronics (including all new categories)
+      ['motor','esc','battery','prop','receiver','transmitter','bec','wiring','voltmonitor'].forEach(key => {
         const cat = PlaneData.electronics[key];
         const tier = Calc._getTier(key, AppState.get(key));
         if (tier && tier.price > 0) {
@@ -1137,7 +1138,9 @@
       partKeys.forEach((pk, i) => {
         const mat = Calc._getMaterial(AppState.get('mat_' + pk));
         const part = PlaneData.materials[pk];
-        rows.push({ category: part.label + ' Material', name: mat.name, price: mat.costPerPart[i], qty: 1, subtotal: mat.costPerPart[i] });
+        if (mat) {
+          rows.push({ category: part.label + ' Material', name: mat.name, price: mat.costPerPart[i], qty: 1, subtotal: mat.costPerPart[i] });
+        }
       });
 
       // Misc
@@ -1147,13 +1150,13 @@
         <tr>
           <td>${r.category}</td>
           <td>${r.name}</td>
-          <td class="mono">$${r.price}</td>
+          <td class="mono">Rs. ${r.price.toLocaleString()}</td>
           <td class="mono">${r.qty}</td>
-          <td class="mono" style="color:var(--accent-warm);">$${r.subtotal}</td>
+          <td class="mono" style="color:var(--accent-warm);">Rs. ${r.subtotal.toLocaleString()}</td>
         </tr>
       `).join('');
 
-      document.getElementById('budget-table-total').textContent = '$' + costs.total;
+      document.getElementById('budget-table-total').textContent = 'Rs. ' + costs.total.toLocaleString();
     }
 
     // Charts
@@ -1165,7 +1168,7 @@
 
   function updateBudgetTarget() {
     const costs = Calc.totalCost();
-    const target = parseInt(document.getElementById('budget-target-slider')?.value || 200);
+    const target = parseInt(document.getElementById('budget-target-slider')?.value || 45000);
     const pct = Math.min(100, (costs.total / target) * 100);
     const fill = document.getElementById('budget-fill');
     const badge = document.getElementById('budget-pct');
