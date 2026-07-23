@@ -1,20 +1,18 @@
 /* ============================================================
-   Bayraktar TB2 — Three.js 3D Aircraft Model (v2)
+   Bayraktar TB2 — Three.js 3D Aircraft Model (v3 - Low Poly Accurate)
    ============================================================
-   Rebuilt from reference drawings with accurate proportions:
-   - Rounded bulbous nose (sensor dome)
-   - Long slender fuselage tapering to thin tail boom
-   - High-aspect-ratio straight wings at ~40% from nose
-   - Inverted V-tail at rear
-   - Pusher propeller behind V-tail
-   - Tricycle landing gear
-   - Underwing pylons
+   Accurate schematic reconstruction based on official Bayraktar TB2 drawings:
+   - Central Fuselage Pod (45mm W × 55mm H) with EO/IR camera turret underneath
+   - 1000mm wingspan with 2.5° dihedral and clean bare wings (no pylons)
+   - Twin Tail Booms extending back from wings
+   - Inverted V-Tail / Joined Triangular Tail Fins (Closed Apex, 110° angle, 70mm height)
+   - Pusher Propeller at the rear of the central pod between the twin booms
+   - Low-poly aesthetic with flat shading and crisp wireframe accent edges
    ============================================================ */
 
 const Aircraft3D = (() => {
   let scene, camera, renderer, controls;
   let container;
-  let parts = {};
   let partGroups = {};
   let labels = [];
   let raycaster, mouse;
@@ -26,7 +24,7 @@ const Aircraft3D = (() => {
 
   const COLORS = {
     bg: 0x2b2b2b,
-    ambient: 0x404040,
+    ambient: 0x454545,
     rimLight: 0xe8a87c,
     keyLight: 0xffffff,
     highlight: 0xe74c3c,
@@ -47,15 +45,15 @@ const Aircraft3D = (() => {
     container = document.getElementById(containerId);
     if (!container) return;
 
-    // Prevent re-init
+    // Prevent duplicate canvas
     if (container.querySelector('canvas')) return;
 
     scene = new THREE.Scene();
     scene.background = new THREE.Color(COLORS.bg);
 
     const aspect = container.clientWidth / container.clientHeight;
-    camera = new THREE.PerspectiveCamera(32, aspect, 0.1, 100);
-    camera.position.set(6, 3.5, 7);
+    camera = new THREE.PerspectiveCamera(30, aspect, 0.1, 100);
+    camera.position.set(6.5, 4.0, 7.5);
 
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(container.clientWidth, container.clientHeight);
@@ -63,33 +61,33 @@ const Aircraft3D = (() => {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.3;
+    renderer.toneMappingExposure = 1.35;
     container.appendChild(renderer.domElement);
 
-    // Lights — warm rim lighting
-    scene.add(new THREE.AmbientLight(0x404040, 0.6));
+    // Lighting setup for rim-lit low-poly look
+    scene.add(new THREE.AmbientLight(COLORS.ambient, 0.7));
 
-    const keyLight = new THREE.DirectionalLight(0xffffff, 0.7);
-    keyLight.position.set(5, 10, 5);
+    const keyLight = new THREE.DirectionalLight(COLORS.keyLight, 0.85);
+    keyLight.position.set(6, 12, 6);
     keyLight.castShadow = true;
     scene.add(keyLight);
 
-    const rimLight1 = new THREE.DirectionalLight(COLORS.rimLight, 0.9);
-    rimLight1.position.set(-4, 2, -5);
+    const rimLight1 = new THREE.DirectionalLight(COLORS.rimLight, 1.0);
+    rimLight1.position.set(-5, 3, -6);
     scene.add(rimLight1);
 
     const rimLight2 = new THREE.DirectionalLight(COLORS.rimLight, 0.5);
-    rimLight2.position.set(5, -1, -3);
+    rimLight2.position.set(6, -2, -4);
     scene.add(rimLight2);
 
-    scene.add(new THREE.HemisphereLight(0x445566, 0x222222, 0.35));
+    scene.add(new THREE.HemisphereLight(0x445566, 0x222222, 0.4));
 
     // Orbit Controls
     controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.minDistance = 2;
-    controls.maxDistance = 18;
+    controls.maxDistance = 20;
     controls.target.set(0, 0, 0);
 
     raycaster = new THREE.Raycaster();
@@ -113,36 +111,51 @@ const Aircraft3D = (() => {
     animate();
   }
 
-  function makeMat(matId, metalness) {
+  function makeMat(matId, metalness, extraProps) {
     const color = MATERIAL_COLORS[matId] || 0x555555;
     return new THREE.MeshStandardMaterial({
-      color, roughness: 0.55, metalness: metalness || 0.15,
+      color,
+      roughness: 0.45,
+      metalness: metalness || 0.15,
+      flatShading: true, // LOW POLY FACETED LOOK!
       emissive: new THREE.Color(COLORS.rimLight),
-      emissiveIntensity: 0.02
+      emissiveIntensity: 0.03,
+      ...extraProps
     });
   }
 
-  function addEdges(mesh, opacity) {
+  function addEdges(mesh, opacity, angleThreshold) {
     const edges = new THREE.LineSegments(
-      new THREE.EdgesGeometry(mesh.geometry, 25),
-      new THREE.LineBasicMaterial({ color: 0x555555, transparent: true, opacity: opacity || 0.12 })
+      new THREE.EdgesGeometry(mesh.geometry, angleThreshold || 20),
+      new THREE.LineBasicMaterial({ color: 0x666666, transparent: true, opacity: opacity || 0.2 })
     );
     mesh.add(edges);
   }
 
   function buildAircraft() {
     const d = PlaneData.dimensions;
-    // Key dimensions in Three.js units
-    const fuseL = d.fuselageLength * S;  // 5.42
-    const fuseW = d.fuselageWidth * S;   // 0.45
-    const fuseH = d.fuselageHeight * S;  // 0.55
-    const span = d.wingspan * S;         // 10.0
-    const rootC = d.wingRootChord * S;   // 0.60
-    const tipC = d.wingTipChord * S;     // 0.40
-    const vTailH = d.vTailHeight * S;    // 0.70
-    const vTailC = d.vTailRootChord * S; // 0.45
-    const tailAngle = d.vTailAngle;      // 110°
-    const noseToWingLE = d.noseToWingLE * S; // 2.20
+
+    // Dimension scaling (1mm = 0.01 units)
+    const span = d.wingspan * S;               // 10.0
+    const totalLen = d.fuselageLength * S;     // 5.42
+    const fuseW = d.fuselageWidth * S;         // 0.45
+    const fuseH = d.fuselageHeight * S;        // 0.55
+    const rootC = d.wingRootChord * S;         // 0.60
+    const tipC = d.wingTipChord * S;           // 0.40
+    const vTailH = d.vTailHeight * S;          // 0.70
+    const vTailC = d.vTailRootChord * S;       // 0.45
+    const vTailAngle = d.vTailAngle;           // 110°
+    const noseToWingLE = d.noseToWingLE * S;   // 2.20
+
+    // Coordinate reference:
+    // Nose tip at X = +2.40
+    // Wing LE at X = 2.40 - 2.20 = +0.20
+    // Fuselage pod ends at X = -0.80 (length ~ 3.20)
+    // Twin booms extend back to X = -3.02 (Total overall length = 2.40 - (-3.02) = 5.42)
+    const noseX = 2.40;
+    const wingX = noseX - noseToWingLE; // +0.20
+    const podTailX = -0.80;
+    const rearX = noseX - totalLen;     // -3.02
 
     const fuseMat = makeMat(AppState.get('mat_fuselage'));
     const wingMat = makeMat(AppState.get('mat_wing'));
@@ -150,177 +163,198 @@ const Aircraft3D = (() => {
     const mountMat = makeMat(AppState.get('mat_mount'));
 
     // ═══════════════════════════════════════════════════
-    // FUSELAGE — multi-section: nose dome + main body + tail boom
+    // 1. CENTRAL FUSELAGE POD (Bare pod + camera turret + canopy)
     // ═══════════════════════════════════════════════════
-
     const fuselageGroup = new THREE.Group();
     fuselageGroup.userData = {
-      partId: 'fuselage', name: 'Fuselage',
-      dims: `${d.fuselageLength}mm × ${d.fuselageWidth}mm × ${d.fuselageHeight}mm`,
+      partId: 'fuselage',
+      name: 'Central Fuselage Pod',
+      dims: `${d.fuselageLength}mm length, 45mm W × 55mm H pod`,
       matKey: 'mat_fuselage'
     };
 
-    // Nose sensor dome (bulbous rounded front)
-    const noseGeo = new THREE.SphereGeometry(fuseW * 0.55, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55);
-    noseGeo.rotateX(-Math.PI * 0.05);
-    const noseMesh = new THREE.Mesh(noseGeo, fuseMat);
-    noseMesh.position.set(fuseL * 0.47, fuseH * 0.05, 0);
-    noseMesh.scale.set(1.2, 1.0, 1.0);
-    addEdges(noseMesh);
-    fuselageGroup.add(noseMesh);
-
-    // Main fuselage body — using a lathe geometry for smooth organic shape
-    const fuseProfile = [];
-    const fuseSegments = 24;
-    for (let i = 0; i <= fuseSegments; i++) {
-      const t = i / fuseSegments;
-      const x = -fuseL * 0.45 + t * fuseL * 0.85;
-      // Fuselage width profile: wider at front, tapers to tail boom
-      let r;
-      if (t < 0.15) {
-        // Nose taper up
-        r = fuseW * 0.5 * Math.sin(t / 0.15 * Math.PI * 0.5);
-      } else if (t < 0.55) {
-        // Main body — full width
-        r = fuseW * 0.5;
-      } else {
-        // Tail boom taper
-        const tb = (t - 0.55) / 0.45;
-        r = fuseW * 0.5 * (1 - tb * 0.7);
+    // Low-poly Central Fuselage Pod using cylinder with 10 facets
+    const podLen = noseX - podTailX; // 3.20
+    const podGeo = new THREE.CylinderGeometry(
+      fuseW * 0.35, fuseW * 0.48, podLen, 10, 8
+    );
+    podGeo.rotateZ(Math.PI / 2);
+    // Taper nose & tail vertices for realistic Bayraktar pod shape
+    const pPos = podGeo.attributes.position;
+    for (let i = 0; i < pPos.count; i++) {
+      const x = pPos.getX(i);
+      const frac = (x + podLen / 2) / podLen; // 0 (tail) to 1 (nose)
+      let scaleY = 1.0;
+      let scaleZ = 1.0;
+      if (frac > 0.7) {
+        // Nose rounded taper
+        const nt = (frac - 0.7) / 0.3;
+        scaleY = Math.cos(nt * Math.PI * 0.5) * 0.9 + 0.1;
+        scaleZ = Math.cos(nt * Math.PI * 0.5) * 0.9 + 0.1;
+      } else if (frac < 0.25) {
+        // Rear motor section taper
+        const rt = (0.25 - frac) / 0.25;
+        scaleY = 1.0 - rt * 0.35;
+        scaleZ = 1.0 - rt * 0.35;
       }
-      fuseProfile.push(new THREE.Vector2(r, x));
+      pPos.setY(i, pPos.getY(i) * scaleY * (fuseH / fuseW)); // Apply 55mm height vs 45mm width
+      pPos.setZ(i, pPos.getZ(i) * scaleZ);
     }
+    podGeo.computeVertexNormals();
 
-    const fuseBodyGeo = new THREE.LatheGeometry(fuseProfile, 16);
-    fuseBodyGeo.rotateX(Math.PI / 2);
-    const fuseBody = new THREE.Mesh(fuseBodyGeo, fuseMat);
-    fuseBody.scale.set(1, 1.2, 1); // Slightly taller than wide (55mm H vs 45mm W)
-    addEdges(fuseBody, 0.08);
-    fuselageGroup.add(fuseBody);
+    const podMesh = new THREE.Mesh(podGeo, fuseMat);
+    podMesh.position.set((noseX + podTailX) / 2, 0, 0);
+    addEdges(podMesh, 0.25);
+    fuselageGroup.add(podMesh);
 
-    // Tail boom extension (thin cylinder connecting to V-tail)
-    const boomLen = fuseL * 0.2;
-    const boomGeo = new THREE.CylinderGeometry(fuseW * 0.12, fuseW * 0.1, boomLen, 10);
-    boomGeo.rotateZ(Math.PI / 2);
-    const boomMesh = new THREE.Mesh(boomGeo, fuseMat);
-    boomMesh.position.set(-fuseL * 0.42 - boomLen * 0.35, 0, 0);
-    addEdges(boomMesh);
-    fuselageGroup.add(boomMesh);
-
-    // Canopy/sensor window on top
-    const canopyGeo = new THREE.SphereGeometry(fuseW * 0.22, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5);
-    const canopyMat = new THREE.MeshStandardMaterial({
-      color: 0x334455, roughness: 0.1, metalness: 0.6,
-      emissive: new THREE.Color(0x1a2a3a), emissiveIntensity: 0.1
+    // Electro-optical Camera Turret (EO/IR Gimbal under nose)
+    const turretGroup = new THREE.Group();
+    const gimbalGeo = new THREE.SphereGeometry(0.11, 8, 6);
+    const gimbalMat = new THREE.MeshStandardMaterial({
+      color: 0x222222, roughness: 0.3, metalness: 0.7, flatShading: true
     });
-    const canopy = new THREE.Mesh(canopyGeo, canopyMat);
-    canopy.position.set(fuseL * 0.15, fuseH * 0.52, 0);
-    canopy.scale.set(2.5, 0.6, 1.2);
-    fuselageGroup.add(canopy);
+    const gimbalMesh = new THREE.Mesh(gimbalGeo, gimbalMat);
+    gimbalMesh.position.set(noseX - 0.5, -fuseH * 0.55, 0);
+    addEdges(gimbalMesh, 0.3);
+    turretGroup.add(gimbalMesh);
+
+    // Camera lens glass
+    const lensGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.02, 8);
+    lensGeo.rotateZ(Math.PI / 2);
+    const lensMat = new THREE.MeshStandardMaterial({
+      color: 0x3498db, roughness: 0.1, metalness: 0.9, flatShading: true,
+      emissive: 0x1abc9c, emissiveIntensity: 0.3
+    });
+    const lens = new THREE.Mesh(lensGeo, lensMat);
+    lens.position.set(noseX - 0.42, -fuseH * 0.57, 0);
+    turretGroup.add(lens);
+    fuselageGroup.add(turretGroup);
 
     scene.add(fuselageGroup);
     partGroups.fuselage = fuselageGroup;
 
     // ═══════════════════════════════════════════════════
-    // WINGS — high-aspect-ratio, straight, slight taper
+    // 2. WINGS (1000mm span, 2.5° Dihedral, Low-Poly Airfoil)
     // ═══════════════════════════════════════════════════
-
     const wingGroup = new THREE.Group();
     wingGroup.userData = {
-      partId: 'wing', name: 'Wings',
-      dims: `Span: ${d.wingspan}mm, Root: ${d.wingRootChord}mm, Tip: ${d.wingTipChord}mm`,
+      partId: 'wing',
+      name: 'Wings (2.5° Dihedral)',
+      dims: `Wingspan: ${d.wingspan}mm, Root: ${d.wingRootChord}mm, Tip: ${d.wingTipChord}mm`,
       matKey: 'mat_wing'
     };
 
-    // Wing cross-section: NACA 4412-ish airfoil shape
-    function createWingGeo(halfSpan, rootChord, tipChord, thickness) {
+    const halfSpan = span / 2; // 5.0 units
+    const dihedralRad = (2.5 * Math.PI) / 180; // 2.5° dihedral
+
+    // Create low-poly wing geometry for one side
+    function createLowPolyWingGeo() {
       const shape = new THREE.Shape();
-      // Airfoil-ish cross section at root
-      const c = rootChord;
-      const t = thickness;
+      const c = rootC;
+      const t = d.wingThicknessRoot * S;
+      // 6-point low poly airfoil shape
       shape.moveTo(0, 0);
-      shape.bezierCurveTo(c * 0.05, t * 0.6, c * 0.15, t, c * 0.3, t * 0.95);
-      shape.bezierCurveTo(c * 0.5, t * 0.8, c * 0.8, t * 0.3, c, 0);
-      shape.bezierCurveTo(c * 0.8, -t * 0.15, c * 0.4, -t * 0.2, c * 0.15, -t * 0.15);
-      shape.bezierCurveTo(c * 0.05, -t * 0.1, 0, 0, 0, 0);
+      shape.lineTo(c * 0.2, t * 0.8);
+      shape.lineTo(c * 0.5, t);
+      shape.lineTo(c, 0);
+      shape.lineTo(c * 0.4, -t * 0.25);
+      shape.closePath();
 
       const extrudeSettings = {
-        steps: 20,
-        depth: halfSpan,
-        bevelEnabled: false,
+        steps: 6,
+        depth: halfSpan - fuseW * 0.4,
+        bevelEnabled: false
       };
 
       const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-
-      // Taper: scale vertices based on Z (span) position
       const pos = geo.attributes.position;
+      const depth = halfSpan - fuseW * 0.4;
+
       for (let i = 0; i < pos.count; i++) {
         const z = pos.getZ(i);
-        const spanFrac = z / halfSpan;
-        const scale = 1 - spanFrac * (1 - tipChord / rootChord);
+        const frac = z / depth; // 0 (root) to 1 (tip)
+        const scale = 1 - frac * (1 - tipC / rootC);
         pos.setX(i, pos.getX(i) * scale);
         pos.setY(i, pos.getY(i) * scale);
       }
-      pos.needsUpdate = true;
       geo.computeVertexNormals();
       return geo;
     }
 
-    const wingThick = d.wingThicknessRoot * S;
-    const halfSpan = span * 0.5 - fuseW * 0.5; // subtract fuselage radius
-    const sweep = d.wingSweepLE * S;
-
-    // Right wing
-    const rWingGeo = createWingGeo(halfSpan, rootC, tipC, wingThick);
+    // Right Wing (with +2.5° dihedral)
+    const rWingGeo = createLowPolyWingGeo();
     const rWing = new THREE.Mesh(rWingGeo, wingMat);
-    const wingX = fuseL * 0.5 - noseToWingLE - rootC * 0.35;
-    rWing.position.set(wingX, -wingThick * 0.3, fuseW * 0.5);
-    rWing.rotation.y = -sweep / halfSpan; // slight sweep
-    addEdges(rWing, 0.1);
+    rWing.position.set(wingX - rootC * 0.5, 0, fuseW * 0.4);
+    rWing.rotation.x = -dihedralRad; // Dihedral angle up
+    addEdges(rWing, 0.25);
     wingGroup.add(rWing);
 
-    // Left wing (mirrored)
-    const lWingGeo = createWingGeo(halfSpan, rootC, tipC, wingThick);
+    // Left Wing (with +2.5° dihedral, mirrored)
+    const lWingGeo = createLowPolyWingGeo();
     const lWing = new THREE.Mesh(lWingGeo, wingMat.clone());
-    lWing.position.set(wingX, -wingThick * 0.3, -fuseW * 0.5);
+    lWing.position.set(wingX - rootC * 0.5, 0, -fuseW * 0.4);
     lWing.scale.z = -1;
-    lWing.rotation.y = sweep / halfSpan;
-    addEdges(lWing, 0.1);
+    lWing.rotation.x = dihedralRad; // Dihedral angle up
+    addEdges(lWing, 0.25);
     wingGroup.add(lWing);
-
-    // Underwing pylons (2 per side, as in reference)
-    const pylonGeo = new THREE.BoxGeometry(rootC * 0.5, wingThick * 1.5, 0.015);
-    const pylonMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.5, metalness: 0.3 });
-
-    [0.25, 0.55].forEach(frac => {
-      const pR = new THREE.Mesh(pylonGeo, pylonMat);
-      pR.position.set(wingX + rootC * 0.2, -wingThick * 0.8, fuseW * 0.5 + halfSpan * frac);
-      wingGroup.add(pR);
-
-      const pL = new THREE.Mesh(pylonGeo.clone(), pylonMat.clone());
-      pL.position.set(wingX + rootC * 0.2, -wingThick * 0.8, -(fuseW * 0.5 + halfSpan * frac));
-      wingGroup.add(pL);
-    });
 
     scene.add(wingGroup);
     partGroups.wing = wingGroup;
 
     // ═══════════════════════════════════════════════════
-    // V-TAIL — inverted V-tail (downward angled)
+    // 3. TWIN TAIL BOOMS (Under wing trailing edge -> Tail)
     // ═══════════════════════════════════════════════════
+    const boomGroup = new THREE.Group();
+    boomGroup.userData = {
+      partId: 'fuselage',
+      name: 'Twin Tail Booms',
+      dims: `Dual structural booms extending ${Math.round((wingX - rearX)*100)}mm`,
+      matKey: 'mat_fuselage'
+    };
 
+    const boomSpacing = 1.0; // Distance of booms from center Z (±1.0 units)
+    const boomStartX = wingX - rootC * 0.2;
+    const boomLen = boomStartX - rearX; // ~3.0 units
+
+    // Low poly cylindrical booms (6 sides)
+    const boomGeo = new THREE.CylinderGeometry(0.055, 0.035, boomLen, 6, 4);
+    boomGeo.rotateZ(Math.PI / 2);
+
+    // Right Boom
+    const rBoom = new THREE.Mesh(boomGeo, fuseMat);
+    rBoom.position.set((boomStartX + rearX) / 2, -0.05, boomSpacing);
+    addEdges(rBoom, 0.25);
+    boomGroup.add(rBoom);
+
+    // Left Boom
+    const lBoom = new THREE.Mesh(boomGeo.clone(), fuseMat.clone());
+    lBoom.position.set((boomStartX + rearX) / 2, -0.05, -boomSpacing);
+    addEdges(lBoom, 0.25);
+    boomGroup.add(lBoom);
+
+    scene.add(boomGroup);
+    partGroups.booms = boomGroup;
+
+    // ═══════════════════════════════════════════════════
+    // 4. INVERTED V-TAIL (Joined Triangular Tail Fins - 110° angle, 70mm height)
+    // ═══════════════════════════════════════════════════
     const tailGroup = new THREE.Group();
     tailGroup.userData = {
-      partId: 'tail', name: 'V-Tail (Ruddervators)',
-      dims: `Height: ${d.vTailHeight}mm, Chord: ${d.vTailRootChord}mm, Angle: ${tailAngle}°`,
+      partId: 'tail',
+      name: 'Joined Inverted V-Tail',
+      dims: `110° included angle, ${d.vTailHeight}mm height, ${d.vTailRootChord}mm chord`,
       matKey: 'mat_tail'
     };
 
-    // Each V-tail fin as a flat tapered surface
-    function createTailFin() {
+    // Joined V-tail fins meeting at top center (Closed Apex)
+    // Boom attachment points at Z = ±boomSpacing, Y = -0.05, X = rearX
+    // Apex top point at Z = 0, Y = vTailH - 0.05, X = rearX - vTailC * 0.5
+    const halfAngle = (vTailAngle / 2) * (Math.PI / 180); // 55°
+
+    function createLowPolyFinGeo() {
       const shape = new THREE.Shape();
       const c = vTailC;
-      const h = vTailH;
+      const h = Math.sqrt(vTailH * vTailH + boomSpacing * boomSpacing); // length along fin
       shape.moveTo(0, 0);
       shape.lineTo(c, 0);
       shape.lineTo(c * 0.6, h);
@@ -328,130 +362,123 @@ const Aircraft3D = (() => {
       shape.closePath();
 
       const geo = new THREE.ExtrudeGeometry(shape, {
-        depth: 0.015, bevelEnabled: true,
-        bevelThickness: 0.003, bevelSize: 0.003, bevelSegments: 2
+        depth: 0.015, bevelEnabled: false
       });
       return geo;
     }
 
-    const halfAngle = (tailAngle / 2) * Math.PI / 180; // 55°
-    const tailX = -fuseL * 0.5 - boomLen * 0.4;
+    // Right V-Tail Fin (from boom to apex)
+    const rFinGeo = createLowPolyFinGeo();
+    const rFin = new THREE.Mesh(rFinGeo, tailMat);
+    rFin.position.set(rearX, -0.05, boomSpacing);
+    rFin.rotation.x = -(Math.PI / 2 - halfAngle);
+    addEdges(rFin, 0.3);
+    tailGroup.add(rFin);
 
-    // Right V-tail fin (angled upward-right)
-    const rTailGeo = createTailFin();
-    const rTail = new THREE.Mesh(rTailGeo, tailMat);
-    rTail.position.set(tailX, fuseH * 0.05, 0.008);
-    rTail.rotation.x = -(Math.PI / 2 - halfAngle);
-    addEdges(rTail);
-    tailGroup.add(rTail);
+    // Left V-Tail Fin (from boom to apex)
+    const lFinGeo = createLowPolyFinGeo();
+    const lFin = new THREE.Mesh(lFinGeo, tailMat.clone());
+    lFin.position.set(rearX, -0.05, -boomSpacing);
+    lFin.rotation.x = (Math.PI / 2 - halfAngle);
+    lFin.scale.z = -1;
+    addEdges(lFin, 0.3);
+    tailGroup.add(lFin);
 
-    // Left V-tail fin (angled upward-left)
-    const lTailGeo = createTailFin();
-    const lTail = new THREE.Mesh(lTailGeo, tailMat.clone());
-    lTail.position.set(tailX, fuseH * 0.05, -0.008);
-    lTail.rotation.x = (Math.PI / 2 - halfAngle);
-    addEdges(lTail);
-    tailGroup.add(lTail);
+    // Horizontal stabilizer joiner bar between boom tips
+    const hBarGeo = new THREE.BoxGeometry(vTailC * 0.8, 0.015, boomSpacing * 2);
+    const hBar = new THREE.Mesh(hBarGeo, tailMat.clone());
+    hBar.position.set(rearX + vTailC * 0.4, -0.05, 0);
+    addEdges(hBar, 0.2);
+    tailGroup.add(hBar);
 
     scene.add(tailGroup);
     partGroups.tail = tailGroup;
 
     // ═══════════════════════════════════════════════════
-    // MOTOR + PROPELLER — pusher config behind V-tail
+    // 5. PUSHER MOTOR & PROPELLER (At rear of central pod)
     // ═══════════════════════════════════════════════════
-
     const motorGroup = new THREE.Group();
     motorGroup.userData = {
-      partId: 'mount', name: 'Motor Mount & Propeller',
-      dims: `Mount Ø: ${d.motorMountDia}mm (pusher config)`,
+      partId: 'mount',
+      name: 'Motor Mount & Pusher Propeller',
+      dims: `Motor Ø: ${d.motorMountDia}mm, Pusher configuration`,
       matKey: 'mat_mount'
     };
 
     const mountDia = d.motorMountDia * S;
-    const motorX = tailX - vTailC * 0.3;
 
-    // Motor nacelle
-    const nacelleGeo = new THREE.CylinderGeometry(mountDia * 0.4, mountDia * 0.5, fuseL * 0.05, 12);
-    nacelleGeo.rotateZ(Math.PI / 2);
-    const nacelle = new THREE.Mesh(nacelleGeo, mountMat);
-    nacelle.position.set(motorX, 0, 0);
-    addEdges(nacelle);
-    motorGroup.add(nacelle);
+    // Motor Nacelle / Firewall Mount
+    const mountGeo = new THREE.CylinderGeometry(mountDia * 0.45, mountDia * 0.5, 0.15, 8);
+    mountGeo.rotateZ(Math.PI / 2);
+    const mountMesh = new THREE.Mesh(mountGeo, mountMat);
+    mountMesh.position.set(podTailX - 0.05, 0, 0);
+    addEdges(mountMesh, 0.3);
+    motorGroup.add(mountMesh);
 
-    // Motor bell
-    const bellGeo = new THREE.CylinderGeometry(mountDia * 0.3, mountDia * 0.35, fuseL * 0.025, 12);
-    bellGeo.rotateZ(Math.PI / 2);
-    const bellMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.25, metalness: 0.7 });
-    const bell = new THREE.Mesh(bellGeo, bellMat);
-    bell.position.set(motorX - fuseL * 0.04, 0, 0);
-    motorGroup.add(bell);
+    // Spinner Hub
+    const spinnerGeo = new THREE.ConeGeometry(mountDia * 0.3, 0.12, 8);
+    spinnerGeo.rotateZ(-Math.PI / 2);
+    const spinnerMat = new THREE.MeshStandardMaterial({
+      color: 0x222222, roughness: 0.3, metalness: 0.7, flatShading: true
+    });
+    const spinner = new THREE.Mesh(spinnerGeo, spinnerMat);
+    spinner.position.set(podTailX - 0.18, 0, 0);
+    motorGroup.add(spinner);
 
-    // Propeller hub
-    const hubGeo = new THREE.SphereGeometry(mountDia * 0.1, 8, 8);
-    const propHub = new THREE.Mesh(hubGeo, bellMat);
-    propHub.position.set(motorX - fuseL * 0.058, 0, 0);
-    motorGroup.add(propHub);
-
-    // Propeller blades (3-blade)
-    const propMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.35, metalness: 0.3 });
-    for (let i = 0; i < 3; i++) {
-      const bladeShape = new THREE.Shape();
-      bladeShape.moveTo(0, 0);
-      bladeShape.bezierCurveTo(0.005, mountDia * 0.4, 0.015, mountDia * 0.8, 0.005, mountDia * 1.1);
-      bladeShape.bezierCurveTo(0, mountDia * 1.15, -0.005, mountDia * 1.1, -0.005, mountDia * 0.8);
-      bladeShape.bezierCurveTo(-0.012, mountDia * 0.4, -0.003, 0.01, 0, 0);
-
-      const bladeGeo = new THREE.ShapeGeometry(bladeShape);
-      const blade = new THREE.Mesh(bladeGeo, propMat);
-      blade.position.set(motorX - fuseL * 0.06, 0, 0);
-      blade.rotation.x = (Math.PI * 2 / 3) * i;
-      blade.rotation.y = Math.PI / 2;
-      motorGroup.add(blade);
-    }
+    // Low-poly 2-blade pusher propeller
+    const propMat = new THREE.MeshStandardMaterial({
+      color: 0x111111, roughness: 0.4, metalness: 0.4, flatShading: true
+    });
+    const bladeGeo = new THREE.BoxGeometry(0.015, 1.1, 0.04);
+    const propBlade = new THREE.Mesh(bladeGeo, propMat);
+    propBlade.position.set(podTailX - 0.16, 0, 0);
+    motorGroup.add(propBlade);
 
     scene.add(motorGroup);
     partGroups.motor = motorGroup;
 
     // ═══════════════════════════════════════════════════
-    // LANDING GEAR — tricycle configuration
+    // 6. LANDING GEAR (Tricycle Gear: Nose + 2 Main)
     // ═══════════════════════════════════════════════════
-
     const gearGroup = new THREE.Group();
     gearGroup.userData = {
-      partId: 'fuselage', name: 'Landing Gear',
-      dims: 'Tricycle configuration (nose + 2 main)',
+      partId: 'fuselage',
+      name: 'Landing Gear',
+      dims: 'Tricycle setup (1 Nose wheel + 2 Main wheels)',
       matKey: 'mat_fuselage'
     };
 
-    const gearMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.6, roughness: 0.35 });
-    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.7, metalness: 0.1 });
+    const gearMat = new THREE.MeshStandardMaterial({
+      color: 0x444444, metalness: 0.6, roughness: 0.4, flatShading: true
+    });
+    const wheelMat = new THREE.MeshStandardMaterial({
+      color: 0x1a1a1a, roughness: 0.8, metalness: 0.1, flatShading: true
+    });
 
-    // Nose gear strut
-    const noseStrutGeo = new THREE.CylinderGeometry(0.004, 0.004, fuseH * 0.9, 6);
+    // Nose Gear Strut & Wheel
+    const noseStrutGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.45, 6);
     const noseStrut = new THREE.Mesh(noseStrutGeo, gearMat);
-    noseStrut.position.set(fuseL * 0.35, -fuseH * 0.65, 0);
-    noseStrut.rotation.z = 0.05;
+    noseStrut.position.set(noseX - 0.6, -fuseH * 0.75, 0);
     gearGroup.add(noseStrut);
 
-    // Nose wheel
-    const wheelGeo = new THREE.TorusGeometry(0.025, 0.008, 8, 16);
-    const noseWheel = new THREE.Mesh(wheelGeo, wheelMat);
-    noseWheel.position.set(fuseL * 0.35, -fuseH * 1.1, 0);
-    noseWheel.rotation.y = Math.PI / 2;
+    const noseWheelGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.03, 8);
+    noseWheelGeo.rotateX(Math.PI / 2);
+    const noseWheel = new THREE.Mesh(noseWheelGeo, wheelMat);
+    noseWheel.position.set(noseX - 0.6, -fuseH * 1.15, 0);
     gearGroup.add(noseWheel);
 
-    // Main gear (left and right)
+    // Main Gear Struts & Wheels (Angled out under fuselage)
     [-1, 1].forEach(side => {
-      const strutGeo = new THREE.CylinderGeometry(0.005, 0.005, fuseH * 1.0, 6);
-      const strut = new THREE.Mesh(strutGeo, gearMat);
-      strut.position.set(wingX + rootC * 0.3, -fuseH * 0.7, side * fuseW * 0.8);
-      strut.rotation.z = side * 0.08;
-      gearGroup.add(strut);
+      const mainStrutGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.5, 6);
+      const mainStrut = new THREE.Mesh(mainStrutGeo, gearMat);
+      mainStrut.position.set(wingX + 0.1, -fuseH * 0.75, side * 0.45);
+      mainStrut.rotation.z = -side * 0.15;
+      gearGroup.add(mainStrut);
 
-      const mainWheelGeo = new THREE.TorusGeometry(0.035, 0.012, 8, 16);
+      const mainWheelGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.04, 8);
+      mainWheelGeo.rotateX(Math.PI / 2);
       const mainWheel = new THREE.Mesh(mainWheelGeo, wheelMat);
-      mainWheel.position.set(wingX + rootC * 0.3, -fuseH * 1.2, side * fuseW * 0.8);
-      mainWheel.rotation.y = Math.PI / 2;
+      mainWheel.position.set(wingX + 0.1, -fuseH * 1.2, side * 0.65);
       gearGroup.add(mainWheel);
     });
 
@@ -459,45 +486,34 @@ const Aircraft3D = (() => {
     partGroups.gear = gearGroup;
 
     // ═══════════════════════════════════════════════════
-    // DIMENSION CALLOUT LINES
+    // 7. ENGINEERING DIMENSION ANNOTATION LINES
     // ═══════════════════════════════════════════════════
+    const lineMatRed = new THREE.LineBasicMaterial({ color: 0xe74c3c, transparent: true, opacity: 0.6 });
+    const lineMatGreen = new THREE.LineBasicMaterial({ color: 0x2ecc71, transparent: true, opacity: 0.6 });
+    const lineMatYellow = new THREE.LineBasicMaterial({ color: 0xf1c40f, transparent: true, opacity: 0.6 });
 
-    // Wingspan
-    const wingLineMat = new THREE.LineBasicMaterial({ color: 0xe74c3c, transparent: true, opacity: 0.5 });
+    // Wingspan Callout (Red line across Z axis)
     const wPts = [
-      new THREE.Vector3(wingX + rootC * 0.5, wingThick * 2, -span / 2),
-      new THREE.Vector3(wingX + rootC * 0.5, wingThick * 2, span / 2)
+      new THREE.Vector3(wingX, 0.35, -halfSpan),
+      new THREE.Vector3(wingX, 0.35, halfSpan)
     ];
-    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(wPts), wingLineMat));
+    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(wPts), lineMatRed));
+    createTextSprite(`${d.wingspan}mm Span`, wingX, 0.55, 0, 0xe74c3c);
 
-    // End ticks
-    [-span / 2, span / 2].forEach(z => {
-      const tickPts = [
-        new THREE.Vector3(wingX + rootC * 0.5, wingThick, z),
-        new THREE.Vector3(wingX + rootC * 0.5, wingThick * 3, z)
-      ];
-      scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(tickPts), wingLineMat));
-    });
-
-    createTextSprite(`${d.wingspan}mm`, wingX + rootC * 0.5, wingThick * 4.5, 0, 0xe74c3c);
-
-    // Fuselage length
-    const fuseLineMat = new THREE.LineBasicMaterial({ color: 0x2ecc71, transparent: true, opacity: 0.5 });
+    // Fuselage Overall Length Callout (Green line along X axis)
     const fPts = [
-      new THREE.Vector3(-fuseL * 0.55, -fuseH * 1.5, 0),
-      new THREE.Vector3(fuseL * 0.5, -fuseH * 1.5, 0)
+      new THREE.Vector3(rearX, -fuseH * 1.5, 0),
+      new THREE.Vector3(noseX, -fuseH * 1.5, 0)
     ];
-    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(fPts), fuseLineMat));
-    createTextSprite(`${d.fuselageLength}mm`, 0, -fuseH * 2.2, 0, 0x2ecc71);
+    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(fPts), lineMatGreen));
+    createTextSprite(`${d.fuselageLength}mm Length`, (noseX + rearX) / 2, -fuseH * 2.1, 0, 0x2ecc71);
 
-    // V-tail span
-    const tailLineMat = new THREE.LineBasicMaterial({ color: 0xf1c40f, transparent: true, opacity: 0.5 });
-    createTextSprite(`V-Tail ${d.vTailAngle}°`, tailX + vTailC * 0.3, vTailH * 1.3, 0, 0xf1c40f);
+    // V-Tail Height Callout (Yellow)
+    createTextSprite(`V-Tail ${vTailAngle}° (${d.vTailHeight}mm)`, rearX, vTailH * 1.1, 0, 0xf1c40f);
 
     // ═══════════════════════════════════════════════════
     // STORE POSITIONS FOR EXPLODED VIEW
     // ═══════════════════════════════════════════════════
-
     Object.entries(partGroups).forEach(([key, group]) => {
       partPositions.assembled[key] = {
         x: group.position.x, y: group.position.y, z: group.position.z
@@ -508,28 +524,31 @@ const Aircraft3D = (() => {
   }
 
   function computeExplodedPositions() {
-    const spread = 1.5;
+    const spread = 1.4;
     Object.entries(partGroups).forEach(([key, group]) => {
       const ap = partPositions.assembled[key];
       const ep = { x: ap.x, y: ap.y, z: ap.z };
 
       switch (key) {
         case 'fuselage':
-          ep.x += spread * 0.5;
-          ep.y += spread * 0.2;
+          ep.x += spread * 0.6;
           break;
         case 'wing':
-          ep.y += spread * 0.8;
+          ep.y += spread * 0.75;
+          break;
+        case 'booms':
+          ep.y -= spread * 0.3;
+          ep.z *= 1.4;
           break;
         case 'tail':
           ep.x -= spread * 1.2;
-          ep.y += spread * 0.5;
+          ep.y += spread * 0.4;
           break;
         case 'motor':
           ep.x -= spread * 1.8;
           break;
         case 'gear':
-          ep.y -= spread * 1.0;
+          ep.y -= spread * 0.9;
           break;
       }
 
@@ -542,7 +561,7 @@ const Aircraft3D = (() => {
     canvas.width = 512;
     canvas.height = 64;
     const ctx = canvas.getContext('2d');
-    ctx.font = 'bold 32px Inter, sans-serif';
+    ctx.font = 'bold 30px Inter, sans-serif';
     ctx.fillStyle = '#' + color.toString(16).padStart(6, '0');
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -552,7 +571,7 @@ const Aircraft3D = (() => {
     const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
     const sprite = new THREE.Sprite(spriteMat);
     sprite.position.set(x, y, z);
-    sprite.scale.set(1.2, 0.15, 1);
+    sprite.scale.set(1.4, 0.18, 1);
     scene.add(sprite);
     labels.push(sprite);
   }
@@ -596,7 +615,8 @@ const Aircraft3D = (() => {
       fuselage: 'mat_fuselage',
       wing: 'mat_wing',
       tail: 'mat_tail',
-      motor: 'mat_mount'
+      motor: 'mat_mount',
+      booms: 'mat_fuselage'
     };
 
     Object.entries(map).forEach(([groupKey, stateKey]) => {
@@ -607,9 +627,13 @@ const Aircraft3D = (() => {
 
       group.traverse(child => {
         if (child.isMesh && child.material && child.material.emissive) {
-          // Don't change special materials (canopy, wheels, motor bell, etc.)
-          if (child.material.metalness > 0.5 || child.material.color.getHex() === 0x222222 ||
-              child.material.color.getHex() === 0x333333 || child.material.color.getHex() === 0x444444) return;
+          // Keep special components intact (gimbal glass, wheels, prop blades, etc.)
+          if (child.material.metalness > 0.6 ||
+              child.material.color.getHex() === 0x111111 ||
+              child.material.color.getHex() === 0x1a1a1a ||
+              child.material.color.getHex() === 0x222222 ||
+              child.material.color.getHex() === 0x3498db) return;
+
           child.material.color.set(color);
           child.material.needsUpdate = true;
         }
@@ -624,7 +648,6 @@ const Aircraft3D = (() => {
 
     raycaster.setFromCamera(mouse, camera);
 
-    // Collect all meshes from part groups
     const allMeshes = [];
     Object.values(partGroups).forEach(group => {
       group.traverse(child => { if (child.isMesh) allMeshes.push(child); });
@@ -632,18 +655,16 @@ const Aircraft3D = (() => {
 
     const intersects = raycaster.intersectObjects(allMeshes);
 
-    // Reset previous hover
     if (hoveredPart) {
       hoveredPart.traverse(child => {
         if (child.isMesh && child.material.emissive) {
-          child.material.emissiveIntensity = 0.02;
+          child.material.emissiveIntensity = 0.03;
         }
       });
       hoveredPart = null;
     }
 
     if (intersects.length > 0) {
-      // Find which group this mesh belongs to
       let hit = intersects[0].object;
       let parentGroup = null;
 
@@ -657,7 +678,7 @@ const Aircraft3D = (() => {
         hoveredPart = parentGroup;
         parentGroup.traverse(child => {
           if (child.isMesh && child.material.emissive) {
-            child.material.emissiveIntensity = 0.12;
+            child.material.emissiveIntensity = 0.18;
           }
         });
 
@@ -680,18 +701,15 @@ const Aircraft3D = (() => {
     renderer.setSize(w, h);
   }
 
-  let propAngle = 0;
   function animate() {
     requestAnimationFrame(animate);
     controls.update();
 
-    // Spin propeller
+    // Rotate propeller blades
     if (partGroups.motor) {
-      propAngle += 0.06;
       partGroups.motor.children.forEach(child => {
-        if (child.geometry && child.geometry.type === 'ShapeGeometry') {
-          // These are propeller blades — they already have rotation offsets
-          // We rotate the entire motor group slightly, but it's cleaner to not
+        if (child.geometry && child.geometry.type === 'BoxGeometry' && child.position.x < -0.8) {
+          child.rotation.x += 0.12;
         }
       });
     }
@@ -706,16 +724,16 @@ const Aircraft3D = (() => {
 
     switch (view) {
       case 'top':
-        endPos = { x: 0, y: 10, z: 0.01 };
+        endPos = { x: 0.01, y: 11, z: 0 };
         break;
       case 'side':
-        endPos = { x: 0, y: 0.5, z: 10 };
+        endPos = { x: 0, y: 0.2, z: 11 };
         break;
       case 'front':
-        endPos = { x: 10, y: 0.5, z: 0 };
+        endPos = { x: 11, y: 0.2, z: 0 };
         break;
       default: // isometric
-        endPos = { x: 6, y: 3.5, z: 7 };
+        endPos = { x: 6.5, y: 4.0, z: 7.5 };
     }
 
     const startTime = performance.now();
