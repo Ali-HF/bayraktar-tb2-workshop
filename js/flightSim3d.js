@@ -594,6 +594,27 @@ const FlightSim3D = (() => {
     });
 
     if (isLabelMode) {
+      // 1. Center of Gravity (CG) Arrow (yellow, pointing down at CG)
+      const cgOrigin = new THREE.Vector3(0.18, -0.05, 0);
+      const cgDir = new THREE.Vector3(0, -1, 0);
+      const cgArrow = new THREE.ArrowHelper(cgDir, cgOrigin, 0.45, 0xf1c40f, 0.12, 0.08);
+      labelGroup.add(cgArrow);
+      labelGroup.add(createLabelSprite('Center of Gravity (CG)', 0.18, 0.48, 0));
+
+      // 2. Thrust Arrow (red, pointing backward from propeller)
+      const thrustOrigin = new THREE.Vector3(-0.96, 0, 0);
+      const thrustDir = new THREE.Vector3(-1, 0, 0);
+      const thrustArrow = new THREE.ArrowHelper(thrustDir, thrustOrigin, 0.55, 0xe74c3c, 0.12, 0.08);
+      labelGroup.add(thrustArrow);
+      labelGroup.add(createLabelSprite('Thrust Force', -1.35, 0.25, 0));
+
+      // 3. Lift Arrow (blue, pointing upward from wing center)
+      const liftOrigin = new THREE.Vector3(0.20, 0.05, 0);
+      const liftDir = new THREE.Vector3(0, 1, 0);
+      const liftArrow = new THREE.ArrowHelper(liftDir, liftOrigin, 0.55, 0x3498db, 0.12, 0.08);
+      labelGroup.add(liftArrow);
+      labelGroup.add(createLabelSprite('Lift Force', 0.20, 0.70, 0));
+
       scene.add(labelGroup);
     }
   }
