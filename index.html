@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Bayraktar TB2 Interactive UAV Design Report — Engineering dashboard with 3D model, electronics configurator, performance calculations, and airfoil simulation.">
+  <title>Bayraktar TB2 — UAV Design Report</title>
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- CDN Dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════
+     NAVBAR
+     ════════════════════════════════════════════════════════════ -->
+<nav class="navbar" id="main-navbar">
+  <a class="nav-brand" href="#overview">
+    <div class="nav-brand-icon">✈</div>
+    <div>
+      <div class="nav-brand-text">Bayraktar TB2</div>
+      <div class="nav-brand-sub">Design Report</div>
+    </div>
+  </a>
+
+  <div class="nav-links" id="nav-links">
+    <a class="nav-link active" href="#overview">Overview</a>
+    <a class="nav-link" href="#model">Aircraft Model</a>
+    <a class="nav-link" href="#electronics">Electronics</a>
+    <a class="nav-link" href="#materials">Materials</a>
+    <a class="nav-link" href="#performance">Performance</a>
+    <a class="nav-link" href="#budget">Budget</a>
+    <a class="nav-link" href="#airfoil">Airfoil Sim</a>
+  </div>
+
+  <div class="nav-actions">
+    <button class="btn btn-sm" id="btn-reset" title="Reset all selections to defaults">↺ Reset</button>
+    <button class="btn btn-sm" id="btn-print" title="Print-friendly view" onclick="window.print()">🖨 Print</button>
+  </div>
+</nav>
+
+<!-- ════════════════════════════════════════════════════════════
+     MAIN CONTENT
+     ════════════════════════════════════════════════════════════ -->
+<main class="main-content">
+
+<!-- ───────────────────────────────────────────────────────────
+     PAGE 1: OVERVIEW / HOME
+     ─────────────────────────────────────────────────────────── -->
+<section class="page-section page-active" id="page-overview">
+  <div class="hero">
+    <h1 class="hero-title">
+      <span class="accent">Bayraktar</span> TB2
+    </h1>
+    <p class="hero-subtitle">
+      Interactive design report for a fixed-wing UAV. Explore the 3D model, configure electronics &amp; materials, analyze performance, and simulate airfoil behavior.
+    </p>
+
+    <div class="hero-specs">
+      <div class="hero-spec">
+        <div class="hero-spec-value">1000<small style="font-size:0.5em">mm</small></div>
+        <div class="hero-spec-label">Wingspan</div>
+      </div>
+      <div class="hero-spec">
+        <div class="hero-spec-value">542<small style="font-size:0.5em">mm</small></div>
+        <div class="hero-spec-label">Fuselage Length</div>
+      </div>
+      <div class="hero-spec">
+        <div class="hero-spec-value">V-Tail</div>
+        <div class="hero-spec-label">110° Included</div>
+      </div>
+      <div class="hero-spec">
+        <div class="hero-spec-value">NACA</div>
+        <div class="hero-spec-label">4412 Airfoil</div>
+      </div>
+      <div class="hero-spec">
+        <div class="hero-spec-value" id="hero-weight">--</div>
+        <div class="hero-spec-label">Total Weight (g)</div>
+      </div>
+      <div class="hero-spec">
+        <div class="hero-spec-value" id="hero-cost">--</div>
+        <div class="hero-spec-label">Est. Cost ($)</div>
+      </div>
+    </div>
+
+    <!-- SVG 3-view drawing (top/side/front) -->
+    <div style="max-width:900px; margin:0 auto;">
+      <svg id="overview-svg" viewBox="0 0 920 380" xmlns="http://www.w3.org/2000/svg" style="width:100%; height:auto;">
+        <!-- ═══ TOP VIEW ═══ -->
+        <g transform="translate(170, 190)">
+          <text x="0" y="-155" fill="#666" font-size="11" text-anchor="middle" font-family="Inter,sans-serif" font-weight="600">TOP VIEW</text>
+
+          <!-- Fuselage body — bulbous nose tapering to tail boom -->
+          <path d="M-130,0 C-130,-6 -110,-10 -80,-10 Q-40,-12 0,-12 Q30,-12 60,-10 Q100,-9 120,-7 Q135,-4 140,0 Q135,4 120,7 Q100,9 60,10 Q30,12 0,12 Q-40,12 -80,10 C-110,10 -130,6 -130,0 Z"
+                fill="none" stroke="#e8a87c" stroke-width="1.5"/>
+
+          <!-- Nose sensor dome -->
+          <ellipse cx="-130" cy="0" rx="14" ry="8" fill="none" stroke="#e8a87c" stroke-width="1.2"/>
+
+          <!-- Canopy/sensor window -->
+          <ellipse cx="-70" cy="0" rx="18" ry="6" fill="none" stroke="#3498db" stroke-width="0.8" stroke-dasharray="2,2"/>
+
+          <!-- Wings — high aspect ratio, straight, slight taper -->
+          <polygon points="-20,-10 15,-10 20,-140 -10,-140" fill="none" stroke="#e8a87c" stroke-width="1.5"/>
+          <polygon points="-20,10 15,10 20,140 -10,140" fill="none" stroke="#e8a87c" stroke-width="1.5"/>
+
+          <!-- Underwing pylons -->
+          <line x1="0" y1="-40" x2="5" y2="-40" stroke="#666" stroke-width="3"/>
+          <line x1="0" y1="-75" x2="5" y2="-75" stroke="#666" stroke-width="3"/>
+          <line x1="0" y1="40" x2="5" y2="40" stroke="#666" stroke-width="3"/>
+          <line x1="0" y1="75" x2="5" y2="75" stroke="#666" stroke-width="3"/>
+
+          <!-- Tail boom (thin extension) -->
+          <line x1="120" y1="-3" x2="155" y2="-2" stroke="#e8a87c" stroke-width="1"/>
+          <line x1="120" y1="3" x2="155" y2="2" stroke="#e8a87c" stroke-width="1"/>
+
+          <!-- V-Tail fins (top view — two angled surfaces) -->
+          <polygon points="150,-2 165,-2 168,-22 155,-20" fill="none" stroke="#e74c3c" stroke-width="1.3"/>
+          <polygon points="150,2 165,2 168,22 155,20" fill="none" stroke="#e74c3c" stroke-width="1.3"/>
+
+          <!-- Propeller (behind V-tail) -->
+          <ellipse cx="172" cy="0" rx="3" ry="18" fill="none" stroke="#f1c40f" stroke-width="1"/>
+
+          <!-- Wingspan dimension line -->
+          <line x1="5" y1="-145" x2="5" y2="-152" stroke="#555" stroke-width="0.5"/>
+          <line x1="5" y1="145" x2="5" y2="152" stroke="#555" stroke-width="0.5"/>
+          <line x1="5" y1="-150" x2="5" y2="150" stroke="#e74c3c" stroke-width="0.5" stroke-dasharray="3,3"/>
+          <text x="5" y="166" fill="#e74c3c" font-size="9" text-anchor="middle" font-family="JetBrains Mono,monospace">1000mm</text>
+        </g>
+
+        <!-- ═══ SIDE VIEW ═══ -->
+        <g transform="translate(530, 190)">
+          <text x="20" y="-155" fill="#666" font-size="11" text-anchor="middle" font-family="Inter,sans-serif" font-weight="600">SIDE VIEW</text>
+
+          <!-- Fuselage profile — rounded belly, tapers to tail boom -->
+          <path d="M-130,-8 Q-145,-3 -145,2 Q-145,8 -130,12 Q-90,16 -50,16 Q0,16 40,14 Q80,12 110,8 Q130,4 145,2 Q148,0 145,-2 Q130,-6 110,-10 Q80,-14 40,-16 Q0,-18 -50,-16 Q-90,-14 -130,-8 Z"
+                fill="none" stroke="#e8a87c" stroke-width="1.5"/>
+
+          <!-- Nose sensor dome (side) -->
+          <circle cx="-142" cy="2" r="10" fill="none" stroke="#e8a87c" stroke-width="1.2"/>
+
+          <!-- Canopy bump -->
+          <path d="M-85,-16 Q-75,-24 -55,-24 Q-40,-24 -30,-16" fill="none" stroke="#3498db" stroke-width="1"/>
+
+          <!-- Wing cross section (side view — just the chord line) -->
+          <path d="M-15,-1 Q-5,-5 10,-5 Q25,-4 35,-1" fill="none" stroke="#2ecc71" stroke-width="2"/>
+
+          <!-- Tail boom -->
+          <line x1="130" y1="-2" x2="170" y2="-2" stroke="#e8a87c" stroke-width="1"/>
+          <line x1="130" y1="3" x2="170" y2="1" stroke="#e8a87c" stroke-width="1"/>
+
+          <!-- V-Tail fin (side view — one visible) -->
+          <polygon points="155,-2 170,-2 175,-50 162,-48" fill="none" stroke="#e74c3c" stroke-width="1.2"/>
+
+          <!-- Pusher propeller -->
+          <line x1="178" y1="-15" x2="178" y2="15" stroke="#f1c40f" stroke-width="1.2"/>
+          <circle cx="178" cy="0" r="3" fill="none" stroke="#f1c40f" stroke-width="0.8"/>
+
+          <!-- Nose landing gear -->
+          <line x1="-100" y1="16" x2="-105" y2="38" stroke="#666" stroke-width="1.2"/>
+          <circle cx="-105" cy="42" r="5" fill="none" stroke="#666" stroke-width="1"/>
+
+          <!-- Main landing gear -->
+          <line x1="0" y1="16" x2="-5" y2="42" stroke="#666" stroke-width="1.2"/>
+          <circle cx="-5" cy="47" r="6" fill="none" stroke="#666" stroke-width="1"/>
+
+          <!-- Fuselage length dimension -->
+          <line x1="-150" y1="60" x2="180" y2="60" stroke="#2ecc71" stroke-width="0.5" stroke-dasharray="3,3"/>
+          <line x1="-150" y1="55" x2="-150" y2="65" stroke="#555" stroke-width="0.5"/>
+          <line x1="180" y1="55" x2="180" y2="65" stroke="#555" stroke-width="0.5"/>
+          <text x="15" y="73" fill="#2ecc71" font-size="9" text-anchor="middle" font-family="JetBrains Mono,monospace">542mm</text>
+
+          <!-- Height dimensions -->
+          <line x1="-165" y1="-50" x2="-165" y2="47" stroke="#e8a87c" stroke-width="0.5" stroke-dasharray="2,2"/>
+          <text x="-175" y="0" fill="#e8a87c" font-size="7" text-anchor="middle" font-family="JetBrains Mono,monospace" transform="rotate(-90,-175,0)">183mm</text>
+
+          <!-- V-tail height callout -->
+          <line x1="185" y1="-50" x2="185" y2="-2" stroke="#f1c40f" stroke-width="0.5" stroke-dasharray="2,2"/>
+          <text x="195" y="-25" fill="#f1c40f" font-size="7" text-anchor="middle" font-family="JetBrains Mono,monospace">70mm</text>
+        </g>
+
+        <!-- ═══ FRONT VIEW ═══ -->
+        <g transform="translate(845, 190)">
+          <text x="0" y="-155" fill="#666" font-size="11" text-anchor="middle" font-family="Inter,sans-serif" font-weight="600">FRONT</text>
+
+          <!-- Fuselage cross-section -->
+          <ellipse cx="0" cy="0" rx="11" ry="14" fill="none" stroke="#e8a87c" stroke-width="1.5"/>
+
+          <!-- Wings — straight, high aspect ratio -->
+          <line x1="-11" y1="0" x2="-65" y2="2" stroke="#e8a87c" stroke-width="2.5"/>
+          <line x1="11" y1="0" x2="65" y2="2" stroke="#e8a87c" stroke-width="2.5"/>
+
+          <!-- V-Tail fins (angled up from fuselage top) -->
+          <line x1="-4" y1="-14" x2="-28" y2="-52" stroke="#e74c3c" stroke-width="2"/>
+          <line x1="4" y1="-14" x2="28" y2="-52" stroke="#e74c3c" stroke-width="2"/>
+
+          <!-- V-tail angle arc -->
+          <path d="M-14,-32 A18,18 0 0,1 14,-32" fill="none" stroke="#f1c40f" stroke-width="0.8"/>
+          <text x="0" y="-25" fill="#f1c40f" font-size="7" text-anchor="middle" font-family="JetBrains Mono,monospace">110°</text>
+
+          <!-- Landing gear (front view) -->
+          <line x1="-15" y1="14" x2="-22" y2="40" stroke="#666" stroke-width="1"/>
+          <circle cx="-22" cy="44" r="5" fill="none" stroke="#666" stroke-width="0.8"/>
+          <line x1="15" y1="14" x2="22" y2="40" stroke="#666" stroke-width="1"/>
+          <circle cx="22" cy="44" r="5" fill="none" stroke="#666" stroke-width="0.8"/>
+
+          <!-- Nose sensor dome -->
+          <circle cx="0" cy="5" r="8" fill="none" stroke="#3498db" stroke-width="0.8" stroke-dasharray="2,2"/>
+        </g>
+      </svg>
+    </div>
+
+    <!-- Navigation cards -->
+    <div class="nav-cards">
+      <a class="nav-card" href="#model">
+        <div class="nav-card-icon" style="background:rgba(232,168,124,0.1); color:#e8a87c;">🛩</div>
+        <div class="nav-card-text">
+          <h3>3D Aircraft Model</h3>
+          <p>Interactive Three.js model with exploded view</p>
+        </div>
+      </a>
+      <a class="nav-card" href="#electronics">
+        <div class="nav-card-icon" style="background:rgba(52,152,219,0.1); color:#3498db;">⚡</div>
+        <div class="nav-card-text">
+          <h3>Electronics</h3>
+          <p>Motor, ESC, battery, servos configurator</p>
+        </div>
+      </a>
+      <a class="nav-card" href="#materials">
+        <div class="nav-card-icon" style="background:rgba(46,204,113,0.1); color:#2ecc71;">🧱</div>
+        <div class="nav-card-text">
+          <h3>Materials</h3>
+          <p>Per-part material selection with trade-offs</p>
+        </div>
+      </a>
+      <a class="nav-card" href="#performance">
+        <div class="nav-card-icon" style="background:rgba(241,196,15,0.1); color:#f1c40f;">📊</div>
+        <div class="nav-card-text">
+          <h3>Performance</h3>
+          <p>Engineering calculations &amp; target ranges</p>
+        </div>
+      </a>
+      <a class="nav-card" href="#budget">
+        <div class="nav-card-icon" style="background:rgba(155,89,182,0.1); color:#9b59b6;">💰</div>
+        <div class="nav-card-text">
+          <h3>Budget</h3>
+          <p>Cost breakdown, pie charts, itemized table</p>
+        </div>
+      </a>
+      <a class="nav-card" href="#airfoil">
+        <div class="nav-card-icon" style="background:rgba(26,188,156,0.1); color:#1abc9c;">🌊</div>
+        <div class="nav-card-text">
+          <h3>Airfoil Simulation</h3>
+          <p>NACA 4412 streamline animation &amp; CL curve</p>
+        </div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────────────────────────────────────────────────
+     PAGE 2: AIRCRAFT MODEL DASHBOARD
+     ─────────────────────────────────────────────────────────── -->
+<section class="page-section" id="page-model">
+  <div class="page-header">
+    <h1 class="page-title">Aircraft <span>Model</span></h1>
+    <p class="page-subtitle">Interactive 3D Bayraktar TB2 — hover over parts for dimensions, change materials to see color updates</p>
+  </div>
+
+  <div class="grid-model">
+    <!-- Left Panel: Electronics -->
+    <div class="panel">
+      <div class="panel-header">⚡ Electronics</div>
+      <div class="panel-body" id="model-electronics-panel">
+        <!-- Filled by JS -->
+      </div>
+    </div>
+
+    <!-- Center: 3D Model -->
+    <div class="grid-model-center">
+      <div class="model-container" id="model-3d-container">
+        <div class="model-toolbar">
+          <div class="btn-group">
+            <button class="btn btn-sm active" onclick="Aircraft3D.toggleExploded(false); this.parentElement.querySelector('.active')?.classList.remove('active'); this.classList.add('active');">Assembled</button>
+            <button class="btn btn-sm" onclick="Aircraft3D.toggleExploded(true); this.parentElement.querySelector('.active')?.classList.remove('active'); this.classList.add('active');">Exploded</button>
+          </div>
+          <div class="btn-group" style="margin-left:8px;">
+            <button class="btn btn-sm" onclick="Aircraft3D.setView('iso')">3D</button>
+            <button class="btn btn-sm" onclick="Aircraft3D.setView('top')">Top</button>
+            <button class="btn btn-sm" onclick="Aircraft3D.setView('side')">Side</button>
+            <button class="btn btn-sm" onclick="Aircraft3D.setView('front')">Front</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Panel: Materials -->
+    <div class="panel">
+      <div class="panel-header">🧱 Materials</div>
+      <div class="panel-body" id="model-materials-panel">
+        <!-- Filled by JS -->
+      </div>
+    </div>
+
+    <!-- Bottom Stats Strip -->
+    <div style="grid-column: 1 / -1;">
+      <div class="grid-4" id="model-stats-strip">
+        <!-- Filled by JS -->
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────────────────────────────────────────────────
+     PAGE 3: ELECTRONICS CONFIGURATOR
+     ─────────────────────────────────────────────────────────── -->
+<section class="page-section" id="page-electronics">
+  <div class="page-header">
+    <h1 class="page-title">Electronics <span>Configurator</span></h1>
+    <p class="page-subtitle">Select components across budget, mid-range, and high-performance tiers</p>
+  </div>
+
+  <div class="grid-2" id="electronics-grid">
+    <!-- Filled by JS -->
+  </div>
+</section>
+
+<!-- ───────────────────────────────────────────────────────────
+     PAGE 4: MATERIALS SELECTOR
+     ─────────────────────────────────────────────────────────── -->
+<section class="page-section" id="page-materials">
+  <div class="page-header">
+    <h1 class="page-title">Materials <span>Selector</span></h1>
+    <p class="page-subtitle">Choose materials per structural part — see weight, cost, and strength trade-offs</p>
+  </div>
+
+  <div class="grid-2" id="materials-grid">
+    <!-- Filled by JS -->
+  </div>
+
+  <div style="margin-top:28px;">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="dot" style="background:var(--accent-warm)"></span> Weight Breakdown (Structural Estimate)</div>
+      </div>
+      <div id="weight-breakdown">
+        <!-- Filled by JS -->
+      </div>
+      <p class="stat-note" style="margin-top:12px;">
+        ⓘ Structural weight is estimated using surface-area × thickness × material-density (shell approximation). This is clearly an approximation since exact part volumes are not specified.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────────────────────────────────────────────────
+     PAGE 5: PERFORMANCE & CALCULATIONS
+     ─────────────────────────────────────────────────────────── -->
+<section class="page-section" id="page-performance">
+  <div class="page-header">
+    <h1 class="page-title">Performance <span>&amp; Calculations</span></h1>
+    <p class="page-subtitle">Real-time engineering metrics with target-range indicators</p>
+  </div>
+
+  <!-- Flight Category Selector -->
+  <div style="margin-bottom:24px; display:flex; align-items:center; gap:16px;">
+    <span style="font-size:0.82rem; color:var(--text-secondary);">Flight Category:</span>
+    <div class="btn-group" id="flight-category-group">
+      <button class="btn btn-sm" data-cat="trainer">Trainer</button>
+      <button class="btn btn-sm active" data-cat="sport">Sport</button>
+      <button class="btn btn-sm" data-cat="3d">3D / Aerobatic</button>
+    </div>
+  </div>
+
+  <!-- Metrics Grid -->
+  <div class="grid-4" id="perf-stats-grid">
+    <!-- Filled by JS -->
+  </div>
+
+  <!-- Gauge Bars -->
+  <div class="grid-2" style="margin-top:28px;">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="dot" style="background:var(--accent-warm)"></span> Performance Gauges</div>
+      </div>
+      <div id="perf-gauges">
+        <!-- Filled by JS -->
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="dot" style="background:var(--accent-blue)"></span> Radar Overview</div>
+      </div>
+      <div class="chart-container">
+        <canvas id="radar-chart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Formulas Reference -->
+  <div class="card" style="margin-top:28px;">
+    <div class="card-header">
+      <div class="card-title"><span class="dot" style="background:var(--accent-cyan)"></span> Formulas Reference</div>
+    </div>
+    <div class="grid-2">
+      <div>
+        <div class="formula">Wing Loading = Total Weight (oz) ÷ Wing Area (ft²)</div>
+        <div class="formula">Power-to-Weight = Motor Watts ÷ Total Weight (lb)</div>
+        <div class="formula">Thrust-to-Weight = Static Thrust (g) ÷ Total Weight (g)</div>
+        <div class="formula">Aspect Ratio = Wingspan² ÷ Wing Area</div>
+      </div>
+      <div>
+        <div class="formula">Stall Speed = √(2W ÷ (ρ·S·C_Lmax)), C_Lmax ≈ 1.35</div>
+        <div class="formula">Flight Time = (mAh ÷ (Avg_A × 1000)) × 60 × 0.8</div>
+        <div class="formula">Top Speed ≈ RPM × Pitch(in) × 60 / 63360 × 0.85</div>
+        <div class="formula">C-Rating Check: Cap(Ah) × C ≥ Motor Max Amps</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────────────────────────────────────────────────
+     PAGE 6: BUDGET
+     ─────────────────────────────────────────────────────────── -->
+<section class="page-section" id="page-budget">
+  <div class="page-header">
+    <h1 class="page-title">Budget <span>Calculator</span></h1>
+    <p class="page-subtitle">Cost breakdown by category — updates instantly as you change selections</p>
+  </div>
+
+  <!-- Total -->
+  <div class="budget-total">
+    <div class="budget-total-label">Estimated Total Cost</div>
+    <div class="budget-total-value"><span class="currency">$</span><span id="budget-total-number">0</span></div>
+  </div>
+
+  <!-- Budget Target Slider -->
+  <div class="card" style="margin-bottom:24px;">
+    <div class="card-header">
+      <div class="card-title"><span class="dot" style="background:var(--accent-yellow)"></span> Budget Target</div>
+      <span id="budget-pct" class="badge badge-pass">0% used</span>
+    </div>
+    <div class="slider-group">
+      <div class="slider-label">
+        <span>Target Budget</span>
+        <strong>$<span id="budget-target-val">200</span></strong>
+      </div>
+      <input type="range" id="budget-target-slider" min="50" max="500" value="200" step="10">
+    </div>
+    <div class="gauge-bar">
+      <div class="gauge-track">
+        <div class="gauge-fill green" id="budget-fill" style="width:0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <!-- Donut Chart -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="dot" style="background:var(--accent-purple)"></span> Cost Distribution</div>
+      </div>
+      <div class="chart-container">
+        <canvas id="budget-donut-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- Bar Chart -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="dot" style="background:var(--accent-orange)"></span> Cost by Component</div>
+      </div>
+      <div class="chart-container">
+        <canvas id="budget-bar-chart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Itemized Table -->
+  <div class="card" style="margin-top:24px;">
+    <div class="card-header">
+      <div class="card-title"><span class="dot" style="background:var(--accent-warm)"></span> Itemized Cost Table</div>
+    </div>
+    <table class="data-table" id="budget-table">
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th>Component</th>
+          <th>Unit Price</th>
+          <th>Qty</th>
+          <th>Subtotal</th>
+        </tr>
+      </thead>
+      <tbody id="budget-table-body">
+        <!-- Filled by JS -->
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4" style="font-weight:700; text-align:right;">Total</td>
+          <td class="mono" style="font-weight:700; color:var(--accent-warm);" id="budget-table-total">$0</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</section>
+
+<!-- ───────────────────────────────────────────────────────────
+     PAGE 7: AIRFOIL SIMULATION
+     ─────────────────────────────────────────────────────────── -->
+<section class="page-section" id="page-airfoil">
+  <div class="page-header">
+    <h1 class="page-title">Airfoil <span>Simulation</span></h1>
+    <p class="page-subtitle">NACA 4412 airfoil — animated streamlines, angle-of-attack control, and approximate lift coefficient curve</p>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:20px;">
+    <!-- Controls -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="dot" style="background:var(--accent-cyan)"></span> Simulation Controls</div>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-label">
+          <strong>Angle of Attack</strong>
+          <span id="aoa-display">5.0°</span>
+        </div>
+        <input type="range" id="aoa-slider" min="-5" max="20" value="5" step="0.5">
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-label">
+          <strong>Airspeed Multiplier</strong>
+          <span id="airspeed-display">1.0×</span>
+        </div>
+        <input type="range" id="airspeed-slider" min="0.2" max="3" value="1" step="0.1">
+      </div>
+
+      <div style="margin-top:16px;">
+        <span style="font-size:0.8rem; color:var(--text-secondary); margin-right:12px;">Chord Section:</span>
+        <div class="btn-group" id="chord-toggle">
+          <button class="btn btn-sm active" data-chord="root">Root (60mm)</button>
+          <button class="btn btn-sm" data-chord="tip">Tip (40mm)</button>
+        </div>
+      </div>
+
+      <div style="margin-top:20px; padding:12px; background:rgba(255,255,255,0.03); border-radius:var(--radius-sm);">
+        <div style="font-size:0.72rem; color:var(--text-muted); margin-bottom:6px;">NACA 4412 Parameters</div>
+        <div style="font-size:0.8rem; color:var(--text-secondary); line-height:1.8;">
+          Max camber: <strong style="color:var(--accent-warm);">4%</strong> at <strong style="color:var(--accent-warm);">40%</strong> chord<br>
+          Thickness: <strong style="color:var(--accent-warm);">12%</strong> of chord<br>
+          Critical AoA: <strong style="color:var(--accent-red);">~15°</strong> (stall onset)
+        </div>
+      </div>
+    </div>
+
+    <!-- CL Chart -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="dot" style="background:var(--accent-warm)"></span> C<sub>L</sub> vs Angle of Attack</div>
+      </div>
+      <div class="chart-container">
+        <canvas id="cl-chart"></canvas>
+      </div>
+      <p class="stat-note">Simplified thin-airfoil-theory approximation. Post-stall behavior is modeled as a linear drop-off, not a CFD result.</p>
+    </div>
+  </div>
+
+  <!-- Airfoil Canvas -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="dot" style="background:var(--accent-green)"></span> Streamline Visualization</div>
+      <div id="airfoil-cl-badge" class="badge badge-pass">C_L = 0.95</div>
+    </div>
+    <div class="airfoil-container">
+      <canvas id="airfoil-canvas"></canvas>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ════════════════════════════════════════════════════════════
+     SCRIPTS
+     ════════════════════════════════════════════════════════════ -->
+<script src="js/state.js"></script>
+<script src="js/data.js"></script>
+<script src="js/calculations.js"></script>
+<script src="js/router.js"></script>
+<script src="js/aircraft3d.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/airfoil.js"></script>
+
+<script>
+/* ============================================================
+   APP INITIALIZATION
+   ============================================================ */
+(function App() {
+  'use strict';
+
+  // ── Initialize state with defaults ──
+  AppState.reset(DEFAULT_STATE);
+
+  // ── Router ──
+  Router.init((page) => {
+    // Lazy-init 3D model when model page is visited
+    if (page.id === 'model' && !document.querySelector('#model-3d-container canvas')) {
+      setTimeout(() => Aircraft3D.init('model-3d-container'), 100);
+    }
+    // Lazy-init airfoil sim
+    if (page.id === 'airfoil' && !document.querySelector('#airfoil-canvas').getContext) {
+      // Already has context since it's a canvas, just init
+    }
+    if (page.id === 'airfoil') {
+      setTimeout(() => {
+        AirfoilSim.init('airfoil-canvas');
+        Charts.initCLChart('cl-chart');
+        Charts.updateCLMarker(5);
+      }, 100);
+    }
+    if (page.id === 'performance') {
+      setTimeout(() => Charts.initRadarChart('radar-chart'), 100);
+    }
+    if (page.id === 'budget') {
+      setTimeout(() => {
+        Charts.initBudgetDonut('budget-donut-chart');
+        Charts.initCostBar('budget-bar-chart');
+        updateBudgetPage();
+      }, 100);
+    }
+  });
+
+  // ── Build UI Panels ──
+  buildElectronicsPanel();
+  buildElectronicsPage();
+  buildMaterialsPanel();
+  buildMaterialsPage();
+
+  // ── Subscribe to state changes for live recalculation ──
+  AppState.subscribeAll(() => {
+    updateAllDisplays();
+  });
+
+  // ── Initial calculation ──
+  updateAllDisplays();
+
+  // ── Reset button ──
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    AppState.reset(DEFAULT_STATE);
+    buildElectronicsPanel();
+    buildElectronicsPage();
+    buildMaterialsPanel();
+    buildMaterialsPage();
+  });
+
+  // ── Flight category buttons ──
+  document.getElementById('flight-category-group').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-cat]');
+    if (!btn) return;
+    document.querySelectorAll('#flight-category-group .btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    AppState.set('flightCategory', btn.dataset.cat);
+  });
+
+  // ── Airfoil controls ──
+  document.getElementById('aoa-slider').addEventListener('input', (e) => {
+    const val = parseFloat(e.target.value);
+    document.getElementById('aoa-display').textContent = val.toFixed(1) + '°';
+    AirfoilSim.setAoA(val);
+    updateAirfoilBadge(val);
+  });
+
+  document.getElementById('airspeed-slider').addEventListener('input', (e) => {
+    const val = parseFloat(e.target.value);
+    document.getElementById('airspeed-display').textContent = val.toFixed(1) + '×';
+    AirfoilSim.setAirspeed(val);
+  });
+
+  document.getElementById('chord-toggle').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-chord]');
+    if (!btn) return;
+    document.querySelectorAll('#chord-toggle .btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    AirfoilSim.setChord(btn.dataset.chord);
+  });
+
+  // ── Budget target slider ──
+  document.getElementById('budget-target-slider').addEventListener('input', (e) => {
+    document.getElementById('budget-target-val').textContent = e.target.value;
+    updateBudgetTarget();
+  });
+
+  /* ────────────────────────────────────────────────────────────
+     BUILD FUNCTIONS
+     ──────────────────────────────────────────────────────────── */
+
+  function buildElectronicsPanel() {
+    const container = document.getElementById('model-electronics-panel');
+    if (!container) return;
+    container.innerHTML = '';
+
+    Object.entries(PlaneData.electronics).forEach(([key, cat]) => {
+      const item = document.createElement('div');
+      item.className = 'component-item';
+
+      const selected = AppState.get(key);
+      const tier = cat.tiers.find(t => t.id === selected) || cat.tiers[0];
+
+      item.innerHTML = `
+        <div class="component-label"><span class="icon">${getIcon(key)}</span> ${cat.label}</div>
+        <select class="selector" data-key="${key}">
+          ${cat.tiers.map(t => `<option value="${t.id}" ${t.id === selected ? 'selected' : ''}>${t.name}</option>`).join('')}
+        </select>
+        <div class="component-info">${tier.desc} — ${tier.weight}g, $${tier.price}</div>
+      `;
+
+      item.querySelector('select').addEventListener('change', (e) => {
+        AppState.set(key, e.target.value);
+        const newTier = cat.tiers.find(t => t.id === e.target.value);
+        item.querySelector('.component-info').textContent = `${newTier.desc} — ${newTier.weight}g, $${newTier.price}`;
+      });
+
+      container.appendChild(item);
+    });
+  }
+
+  function buildElectronicsPage() {
+    const grid = document.getElementById('electronics-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    Object.entries(PlaneData.electronics).forEach(([key, cat]) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+
+      const selected = AppState.get(key);
+
+      let specsHtml = cat.tiers.map(t => {
+        const isSelected = t.id === selected;
+        const specs = Object.entries(t)
+          .filter(([k]) => !['id','name','desc','price'].includes(k))
+          .map(([k,v]) => `<td class="mono">${v}${getUnit(k)}</td>`)
+          .join('');
+
+        return `<tr style="${isSelected ? 'background:rgba(232,168,124,0.06);' : ''}">
+          <td><strong>${t.name}</strong><br><span style="font-size:0.7rem;color:var(--text-muted);">${t.desc}</span></td>
+          ${specs}
+          <td class="mono" style="color:var(--accent-warm);font-weight:600;">$${t.price}</td>
+        </tr>`;
+      }).join('');
+
+      card.innerHTML = `
+        <div class="card-header">
+          <div class="card-title"><span class="dot" style="background:${getColor(key)}"></span> ${cat.label}</div>
+          ${cat.optional ? '<span class="badge badge-warn">Optional</span>' : ''}
+        </div>
+        <select class="selector" data-key="${key}" style="margin-bottom:16px;">
+          ${cat.tiers.map(t => `<option value="${t.id}" ${t.id === selected ? 'selected' : ''}>${t.name}</option>`).join('')}
+        </select>
+        <table class="data-table"><tbody>${specsHtml}</tbody></table>
+      `;
+
+      card.querySelector('select').addEventListener('change', (e) => {
+        AppState.set(key, e.target.value);
+        buildElectronicsPage();
+        buildElectronicsPanel();
+      });
+
+      grid.appendChild(card);
+    });
+  }
+
+  function buildMaterialsPanel() {
+    const container = document.getElementById('model-materials-panel');
+    if (!container) return;
+    container.innerHTML = '';
+
+    Object.entries(PlaneData.materials).forEach(([partKey, part]) => {
+      const item = document.createElement('div');
+      item.className = 'component-item';
+      const selected = AppState.get('mat_' + partKey);
+
+      item.innerHTML = `
+        <div class="component-label">🔧 ${part.label}</div>
+        <select class="selector" data-key="mat_${partKey}">
+          ${PlaneData.materialOptions.map(m => `<option value="${m.id}" ${m.id === selected ? 'selected' : ''}>${m.name}</option>`).join('')}
+        </select>
+      `;
+
+      item.querySelector('select').addEventListener('change', (e) => {
+        AppState.set('mat_' + partKey, e.target.value);
+        buildMaterialsPanel();
+        buildMaterialsPage();
+      });
+
+      container.appendChild(item);
+    });
+  }
+
+  function buildMaterialsPage() {
+    const grid = document.getElementById('materials-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    Object.entries(PlaneData.materials).forEach(([partKey, part], partIdx) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      const selected = AppState.get('mat_' + partKey);
+
+      let optionsHtml = PlaneData.materialOptions.map(m => {
+        const isSelected = m.id === selected;
+        const strengthPips = Array.from({length: 10}, (_, i) =>
+          `<span class="pip ${i < m.strength ? 'filled' : ''}"></span>`
+        ).join('');
+
+        return `
+          <div class="material-option ${isSelected ? 'selected' : ''}" data-mat="${m.id}">
+            <div class="material-swatch" style="background:${m.color}"></div>
+            <div class="material-info" style="flex:1;">
+              <h4>${m.name}</h4>
+              <p>${m.desc}</p>
+              <div class="strength-bar" title="Strength: ${m.strength}/10">${strengthPips}</div>
+            </div>
+            <div style="text-align:right; font-family:var(--font-mono); font-size:0.78rem;">
+              <div style="color:var(--accent-warm);">$${m.costPerPart[partIdx]}</div>
+              <div style="color:var(--text-muted); font-size:0.68rem;">${m.density} g/cm³</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      card.innerHTML = `
+        <div class="card-header">
+          <div class="card-title"><span class="dot" style="background:var(--accent-green)"></span> ${part.label}</div>
+        </div>
+        ${optionsHtml}
+      `;
+
+      card.querySelectorAll('.material-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+          AppState.set('mat_' + partKey, opt.dataset.mat);
+          buildMaterialsPage();
+          buildMaterialsPanel();
+        });
+      });
+
+      grid.appendChild(card);
+    });
+
+    // Weight breakdown
+    updateWeightBreakdown();
+  }
+
+  /* ────────────────────────────────────────────────────────────
+     UPDATE FUNCTIONS
+     ──────────────────────────────────────────────────────────── */
+
+  function updateAllDisplays() {
+    const report = Calc.fullReport();
+
+    // Hero page
+    document.getElementById('hero-weight').textContent = Math.round(report.totalWeight_g);
+    document.getElementById('hero-cost').textContent = '$' + report.costs.total;
+
+    // Model page stats strip
+    updateModelStats(report);
+
+    // Performance page
+    updatePerformancePage(report);
+
+    // Budget page
+    updateBudgetPage();
+
+    // Weight breakdown
+    updateWeightBreakdown();
+  }
+
+  function updateModelStats(report) {
+    const strip = document.getElementById('model-stats-strip');
+    if (!strip) return;
+
+    const stats = [
+      { label: 'Total Weight', value: Math.round(report.totalWeight_g) + 'g', status: '' },
+      { label: 'Wing Loading', value: report.wingLoading.value.toFixed(1), unit: 'oz/ft²', status: report.wingLoading.status },
+      { label: 'Power/Weight', value: report.powerToWeight.value.toFixed(0), unit: 'W/lb', status: report.powerToWeight.status },
+      { label: 'Thrust/Weight', value: report.thrustToWeight.value.toFixed(2), unit: 'ratio', status: report.thrustToWeight.status },
+      { label: 'Flight Time', value: report.flightTime.value.toFixed(1), unit: 'min', status: '' },
+      { label: 'Top Speed', value: report.topSpeed.kph.toFixed(0), unit: 'km/h', status: '' },
+      { label: 'Est. Cost', value: '$' + report.costs.total, status: '' },
+      { label: 'C-Rating', value: report.cRatingCheck.pass ? 'PASS' : 'FAIL', status: report.cRatingCheck.pass ? 'green' : 'red' }
+    ];
+
+    strip.innerHTML = stats.map(s => `
+      <div class="stat-card status-${s.status}">
+        <div class="stat-label">${s.label}</div>
+        <div class="stat-value ${s.status}">${s.value}</div>
+        ${s.unit ? `<div class="stat-unit">${s.unit}</div>` : ''}
+      </div>
+    `).join('');
+  }
+
+  function updatePerformancePage(report) {
+    const grid = document.getElementById('perf-stats-grid');
+    if (!grid) return;
+
+    const metrics = [
+      { label: 'Wing Loading', value: report.wingLoading.value.toFixed(1), unit: report.wingLoading.unit, status: report.wingLoading.status,
+        tip: 'Weight per unit wing area. Lower = slower/easier to fly.' },
+      { label: 'Power-to-Weight', value: report.powerToWeight.value.toFixed(0), unit: report.powerToWeight.unit, status: report.powerToWeight.status,
+        tip: 'Motor power per unit weight. Higher = more performance.' },
+      { label: 'Thrust-to-Weight', value: report.thrustToWeight.value.toFixed(2), unit: 'ratio', status: report.thrustToWeight.status,
+        tip: 'Static thrust vs weight. ≥1 means vertical hover capability.' },
+      { label: 'Stall Speed', value: report.stallSpeed.value.toFixed(1), unit: 'm/s (' + report.stallSpeed.valueMph.toFixed(1) + ' mph)', status: '',
+        tip: 'Minimum airspeed to maintain level flight (C_Lmax ≈ 1.35).' },
+      { label: 'Aspect Ratio', value: report.aspectRatio.value.toFixed(1), unit: report.aspectRatio.label, status: '',
+        tip: 'Span² ÷ Area. Higher = more efficient, lower = more agile.' },
+      { label: 'Flight Time', value: report.flightTime.value.toFixed(1), unit: 'minutes', status: report.flightTime.value > 5 ? 'green' : 'yellow',
+        tip: 'Estimated at 70% throttle with 80% LiPo safety margin.' },
+      { label: 'Top Speed', value: report.topSpeed.kph.toFixed(0), unit: 'km/h (' + report.topSpeed.mph.toFixed(0) + ' mph)', status: '',
+        tip: `RPM (${Math.round(report.topSpeed.rpm)}) × pitch × 0.85 efficiency factor.` },
+      { label: 'C-Rating Check', value: report.cRatingCheck.pass ? '✓ PASS' : '✗ FAIL',
+        unit: 'margin: ' + report.cRatingCheck.margin.toFixed(0) + '%',
+        status: report.cRatingCheck.pass ? 'green' : 'red',
+        tip: `Max discharge ${report.cRatingCheck.maxDischarge.toFixed(1)}A vs motor max ${report.cRatingCheck.motorMax}A.` }
+    ];
+
+    grid.innerHTML = metrics.map(m => `
+      <div class="stat-card status-${m.status}">
+        <div class="stat-label tooltip-trigger">${m.label}
+          <div class="tooltip-content">${m.tip}</div>
+        </div>
+        <div class="stat-value ${m.status}">${m.value}</div>
+        <div class="stat-unit">${m.unit}</div>
+      </div>
+    `).join('');
+
+    // Gauge bars
+    updatePerfGauges(report);
+
+    // Radar chart
+    Charts.updatePerformance(report);
+  }
+
+  function updatePerfGauges(report) {
+    const container = document.getElementById('perf-gauges');
+    if (!container) return;
+
+    const gauges = [
+      { label: 'Wing Loading', value: report.wingLoading.value, max: 40, unit: 'oz/ft²', status: report.wingLoading.status },
+      { label: 'Power-to-Weight', value: report.powerToWeight.value, max: 250, unit: 'W/lb', status: report.powerToWeight.status },
+      { label: 'Thrust-to-Weight', value: report.thrustToWeight.value, max: 2, unit: '', status: report.thrustToWeight.status },
+      { label: 'Flight Time', value: report.flightTime.value, max: 30, unit: 'min', status: report.flightTime.value > 5 ? 'green' : 'yellow' }
+    ];
+
+    container.innerHTML = gauges.map(g => {
+      const pct = Math.min(100, (g.value / g.max) * 100);
+      return `
+        <div class="gauge-bar">
+          <div class="gauge-label">
+            <span class="gauge-label-name">${g.label}</span>
+            <span class="gauge-label-value" style="color:var(--accent-${g.status})">${g.value.toFixed(1)} ${g.unit}</span>
+          </div>
+          <div class="gauge-track">
+            <div class="gauge-fill ${g.status}" style="width:${pct}%"></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function updateBudgetPage() {
+    const costs = Calc.totalCost();
+
+    // Total
+    const totalEl = document.getElementById('budget-total-number');
+    if (totalEl) {
+      animateNumber(totalEl, costs.total);
+    }
+
+    // Table
+    const tbody = document.getElementById('budget-table-body');
+    if (tbody) {
+      const rows = [];
+
+      // Electronics
+      ['motor','esc','battery','prop','receiver','fpv'].forEach(key => {
+        const cat = PlaneData.electronics[key];
+        const tier = Calc._getTier(key, AppState.get(key));
+        if (tier && tier.price > 0) {
+          rows.push({ category: cat.label, name: tier.name, price: tier.price, qty: 1, subtotal: tier.price });
+        }
+      });
+
+      // Servos (×3)
+      const servo = Calc._getTier('servo', AppState.get('servo'));
+      if (servo) {
+        rows.push({ category: 'Servos', name: servo.name, price: servo.price, qty: servo.qty || 3, subtotal: servo.price * (servo.qty || 3) });
+      }
+
+      // Materials
+      const partKeys = ['fuselage', 'wing', 'tail', 'mount'];
+      partKeys.forEach((pk, i) => {
+        const mat = Calc._getMaterial(AppState.get('mat_' + pk));
+        const part = PlaneData.materials[pk];
+        rows.push({ category: part.label + ' Material', name: mat.name, price: mat.costPerPart[i], qty: 1, subtotal: mat.costPerPart[i] });
+      });
+
+      // Misc
+      rows.push({ category: 'Hardware/Misc', name: 'Glue, wiring, screws, connectors', price: PlaneData.miscCost, qty: 1, subtotal: PlaneData.miscCost });
+
+      tbody.innerHTML = rows.map(r => `
+        <tr>
+          <td>${r.category}</td>
+          <td>${r.name}</td>
+          <td class="mono">$${r.price}</td>
+          <td class="mono">${r.qty}</td>
+          <td class="mono" style="color:var(--accent-warm);">$${r.subtotal}</td>
+        </tr>
+      `).join('');
+
+      document.getElementById('budget-table-total').textContent = '$' + costs.total;
+    }
+
+    // Charts
+    Charts.updateBudget(costs);
+
+    // Budget target
+    updateBudgetTarget();
+  }
+
+  function updateBudgetTarget() {
+    const costs = Calc.totalCost();
+    const target = parseInt(document.getElementById('budget-target-slider')?.value || 200);
+    const pct = Math.min(100, (costs.total / target) * 100);
+    const fill = document.getElementById('budget-fill');
+    const badge = document.getElementById('budget-pct');
+
+    if (fill) {
+      fill.style.width = pct + '%';
+      fill.className = 'gauge-fill ' + (pct <= 80 ? 'green' : pct <= 100 ? 'yellow' : 'red');
+    }
+    if (badge) {
+      badge.textContent = Math.round(pct) + '% used';
+      badge.className = 'badge ' + (pct <= 80 ? 'badge-pass' : pct <= 100 ? 'badge-warn' : 'badge-fail');
+    }
+  }
+
+  function updateWeightBreakdown() {
+    const container = document.getElementById('weight-breakdown');
+    if (!container) return;
+
+    const sw = Calc.structuralWeight();
+    const ew = Calc.electronicsWeight();
+
+    let html = '';
+
+    // Structural
+    Object.entries(sw.breakdown).forEach(([part, info]) => {
+      const label = PlaneData.materials[part]?.label || part;
+      html += `<div class="weight-item">
+        <div class="weight-item-label"><div class="material-swatch" style="width:16px;height:16px;background:${Calc._getMaterial(AppState.get('mat_'+part)).color};border-radius:4px;"></div> ${label} (${info.material})</div>
+        <div class="weight-item-value">${info.weight.toFixed(1)}g</div>
+      </div>`;
+    });
+
+    // Electronics
+    const ewItems = [
+      { label: 'Motor', val: ew.motor },
+      { label: 'ESC', val: ew.esc },
+      { label: 'Battery', val: ew.battery },
+      { label: 'Servos (×3)', val: ew.servos },
+      { label: 'Propeller', val: ew.prop },
+      { label: 'Receiver', val: ew.receiver },
+    ];
+    if (ew.fpv > 0) ewItems.push({ label: 'FPV', val: ew.fpv });
+
+    ewItems.forEach(item => {
+      html += `<div class="weight-item">
+        <div class="weight-item-label">⚡ ${item.label}</div>
+        <div class="weight-item-value">${item.val}g</div>
+      </div>`;
+    });
+
+    html += `<div class="weight-item">
+      <div class="weight-item-label">🔩 Hardware/Misc</div>
+      <div class="weight-item-value">${PlaneData.miscWeight}g</div>
+    </div>`;
+
+    html += `<div class="weight-item" style="border-top:2px solid var(--accent-warm);margin-top:4px;padding-top:12px;">
+      <div class="weight-item-label" style="font-weight:700;">Total</div>
+      <div class="weight-item-value" style="font-size:1.1rem;">${Math.round(Calc.totalWeight_g())}g</div>
+    </div>`;
+
+    container.innerHTML = html;
+  }
+
+  function updateAirfoilBadge(aoaVal) {
+    const cl = Charts.computeCL(aoaVal);
+    const badge = document.getElementById('airfoil-cl-badge');
+    if (badge) {
+      badge.textContent = 'C_L = ' + cl.toFixed(2);
+      badge.className = 'badge ' + (aoaVal > 14 ? 'badge-fail' : aoaVal > 12 ? 'badge-warn' : 'badge-pass');
+    }
+  }
+
+  /* ────────────────────────────────────────────────────────────
+     UTILITY FUNCTIONS
+     ──────────────────────────────────────────────────────────── */
+
+  function animateNumber(el, target) {
+    const current = parseInt(el.textContent) || 0;
+    const diff = target - current;
+    const steps = 20;
+    let step = 0;
+
+    function tick() {
+      step++;
+      const t = step / steps;
+      const eased = 1 - Math.pow(1 - t, 3);
+      el.textContent = Math.round(current + diff * eased);
+      if (step < steps) requestAnimationFrame(tick);
+    }
+    tick();
+  }
+
+  function getIcon(key) {
+    const icons = { motor: '⚙', esc: '🔌', battery: '🔋', servo: '🎛', prop: '🌀', receiver: '📡', fpv: '📷' };
+    return icons[key] || '•';
+  }
+
+  function getColor(key) {
+    const colors = {
+      motor: 'var(--accent-red)', esc: 'var(--accent-blue)', battery: 'var(--accent-green)',
+      servo: 'var(--accent-yellow)', prop: 'var(--accent-cyan)', receiver: 'var(--accent-purple)',
+      fpv: 'var(--accent-orange)'
+    };
+    return colors[key] || 'var(--accent-warm)';
+  }
+
+  function getUnit(key) {
+    const units = { kv: ' KV', watts: 'W', maxCurrent: 'A', weight: 'g', thrust_g: 'g', price: '',
+      currentRating: 'A', capacity: 'mAh', cells: 'S', voltage: 'V', cRating: 'C',
+      torque: 'kg·cm', speed: 's/60°', diameter: '"', pitch: '"', channels: 'ch', qty: '×' };
+    return units[key] || '';
+  }
+
+})();
+</script>
+
+</body>
+</html>
