@@ -362,20 +362,13 @@ const FlightSim3D = (() => {
     rRuddervatorPivot.add(rRuddervatorMesh);
     scene.add(rRuddervatorPivot);
 
-    // Left Ruddervator — mirrored
+    // Left Ruddervator — mirrored matching lFin exactly
     lRuddervatorPivot = new THREE.Group();
     lRuddervatorPivot.position.set(rearX, -0.05, -boomSpacing);
     lRuddervatorPivot.rotation.x = finTiltAngle; // Tilted matching the left fin
+    lRuddervatorPivot.scale.z = -1; // Mirror Z axis exactly like lFin
 
-    const lRuddGeo = createRuddervatorGeo();
-    // Mirror along the Z-axis (depth) since left fin points in opposite Z direction
-    const lrPos = lRuddGeo.attributes.position;
-    for (let i = 0; i < lrPos.count; i++) {
-      lrPos.setZ(i, -lrPos.getZ(i));
-    }
-    lRuddGeo.computeVertexNormals();
-
-    lRuddervatorMesh = new THREE.Mesh(lRuddGeo, controlMat.clone());
+    lRuddervatorMesh = new THREE.Mesh(createRuddervatorGeo(), controlMat.clone());
     lRuddervatorMesh.userData = { name: 'Left Ruddervator (Pitch/Yaw)' };
     addEdges(lRuddervatorMesh, 0.4);
     lRuddervatorPivot.add(lRuddervatorMesh);
