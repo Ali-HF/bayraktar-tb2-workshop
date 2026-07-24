@@ -555,7 +555,7 @@ const FlightSim3D = (() => {
 
   function setDisplayMode(mode) {
     displayMode = mode;
-    
+
     // Clear existing labels
     while (labelGroup.children.length > 0) {
       labelGroup.remove(labelGroup.children[0]);
@@ -584,7 +584,7 @@ const FlightSim3D = (() => {
     electronicsGroup.traverse(child => {
       if (child.isMesh) {
         child.material.opacity = visualMode === 'solid' ? 0.7 : 1.0;
-        
+
         // If label mode, create a floating 3D text label above the component
         if (isLabelMode && child.userData && child.userData.name) {
           const sprite = createLabelSprite(child.userData.name, child.position.x, child.position.y + 0.3, child.position.z);
@@ -595,11 +595,22 @@ const FlightSim3D = (() => {
 
     if (isLabelMode) {
       // 1. Center of Gravity (CG) Arrow (yellow, pointing down at CG)
-      const cgOrigin = new THREE.Vector3(0.18, -0.05, 0);
+      // Position is computed from actual weight & balance (Calc.centerOfGravity_mm),
+      // not a fixed guess — it shifts when electronics/materials selections change.
+      const d = PlaneData.dimensions;
+      const noseX = 2.40; // must match buildModel()'s noseX
+      const cgStationMM = Calc.centerOfGravity_mm().station_mm;
+      const cgX = noseX - (cgStationMM * S);
+      const cgPct = Calc.centerOfGravityPercentMAC().percentMAC;
+      const cgColor = { green: 0x2ecc71, yellow: 0xf1c40f, red: 0xe74c3c }[Calc.cgStatus(cgPct)];
+
+      const cgOrigin = new THREE.Vector3(cgX, -0.05, 0);
       const cgDir = new THREE.Vector3(0, -1, 0);
-      const cgArrow = new THREE.ArrowHelper(cgDir, cgOrigin, 0.45, 0xf1c40f, 0.12, 0.08);
+      const cgArrow = new THREE.ArrowHelper(cgDir, cgOrigin, 0.45, cgColor, 0.12, 0.08);
       labelGroup.add(cgArrow);
-      labelGroup.add(createLabelSprite('Center of Gravity (CG)', 0.18, 0.48, 0));
+      labelGroup.add(createLabelSprite(
+        `Center of Gravity — ${cgPct.toFixed(1)}% MAC`, cgX, 0.48, 0
+      ));
 
       // 2. Thrust Arrow (red, pointing backward from propeller)
       const thrustOrigin = new THREE.Vector3(-0.96, 0, 0);
@@ -624,7 +635,7 @@ const FlightSim3D = (() => {
     canvas.width = 380;
     canvas.height = 48;
     const ctx = canvas.getContext('2d');
-    
+
     // Transparent dark background panel
     ctx.fillStyle = 'rgba(26, 26, 26, 0.85)';
     ctx.roundRect(0, 0, 380, 48, 8);
