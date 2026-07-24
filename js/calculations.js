@@ -98,9 +98,8 @@ const Calc = (() => {
       const matId = AppState.get('mat_' + partKey);
       const mat = _getMaterial(matId);
 
-      // volume(cm³) = surfaceArea(cm²) × thickness(mm → cm)
-      const vol_cm3 = part.surfaceArea_cm2 * (part.thickness_mm / 10);
-      const weight = vol_cm3 * mat.density;
+      // Scale weight from base foam reference using material weight factor
+      const weight = part.baseFoamWeight * (mat.weightFactor || 1.0);
 
       breakdown[partKey] = { weight, material: mat.name };
       total += weight;

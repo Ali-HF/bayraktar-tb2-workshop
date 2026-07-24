@@ -35,7 +35,7 @@ const PlaneData = {
     motor: {
       label: 'Motor',
       tiers: [
-        { id: 'motor-custom', name: 'Brushless DC Motor',             kv: 1090, watts: 250, maxCurrent: 22, weight: 175, thrust_g: 920,  price: 14828, desc: 'Budget sheet brushless motor' },
+        { id: 'motor-custom', name: 'Brushless DC Motor',             kv: 1000, watts: 250, maxCurrent: 22, weight: 55,  thrust_g: 850,  price: 14828, desc: 'Budget sheet brushless motor' },
         { id: 'motor-budget', name: 'A2212 1400KV',                   kv: 1400, watts: 180, maxCurrent: 15, weight: 48,  thrust_g: 680,  price: 1575,  desc: 'Budget brushless motor' },
         { id: 'motor-mid',    name: 'Emax GT2826-04 1090KV',          kv: 1090, watts: 250, maxCurrent: 22, weight: 175, thrust_g: 920,  price: 7200,  desc: 'Mid-range sport motor' },
         { id: 'motor-high',   name: 'SunnySky X2814 900KV',           kv: 900,  watts: 380, maxCurrent: 30, weight: 108, thrust_g: 1200, price: 10500, desc: 'Premium imported motor' }
@@ -44,7 +44,7 @@ const PlaneData = {
     esc: {
       label: 'ESC',
       tiers: [
-        { id: 'esc-custom', name: 'Electronic Speed Controller (ESC)', currentRating: 60, weight: 63, price: 12500, desc: '60A ESC from budget sheet' },
+        { id: 'esc-custom', name: 'Electronic Speed Controller (ESC)', currentRating: 60, weight: 30, price: 12500, desc: '60A ESC from budget sheet' },
         { id: 'esc-budget', name: 'Generic SimonK 30A',                currentRating: 30, weight: 27, price: 1900,  desc: '30A brushless ESC' },
         { id: 'esc-mid',    name: 'Hobbywing Skywalker V2 60A',        currentRating: 60, weight: 63, price: 6700,  desc: '60A ESC w/ built-in BEC' },
         { id: 'esc-high',   name: 'Hobbywing Platinum 60A Pro',        currentRating: 60, weight: 38, price: 16500, desc: '60A Pro ESC, imported' }
@@ -71,7 +71,7 @@ const PlaneData = {
     prop: {
       label: 'Propeller + Adapter',
       tiers: [
-        { id: 'prop-custom', name: 'Prop Saver/ Prop Adapter', diameter: 9,  pitch: 6, weight: 12, price: 4800, desc: 'Prop saver/adapter from budget sheet' },
+        { id: 'prop-custom', name: 'XOAR 10×5 Propeller + Adapter',   diameter: 10, pitch: 5, weight: 0,  price: 4800, desc: 'XOAR propeller from calculations sheet' },
         { id: 'prop-budget', name: 'Generic Prop Adapter',     diameter: 8,  pitch: 4, weight: 8,  price: 225,  desc: 'Universal adapter' },
         { id: 'prop-mid',    name: 'Prop Saver 28-35mm',       diameter: 9,  pitch: 6, weight: 12, price: 375,  desc: 'Prop saver mount' },
         { id: 'prop-high',   name: 'APC 10×6E + Adapter',      diameter: 10, pitch: 6, weight: 20, price: 1500, desc: 'Precision APC prop' }
@@ -80,7 +80,7 @@ const PlaneData = {
     receiver: {
       label: 'Receiver',
       tiers: [
-        { id: 'rx-custom', name: 'RC Reciever',               channels: 6,  weight: 15, price: 11500, desc: 'RC Receiver from budget sheet' },
+        { id: 'rx-custom', name: 'RC Reciever',               channels: 6,  weight: 10, price: 11500, desc: 'RC Receiver from budget sheet' },
         { id: 'rx-budget', name: 'FlySky FS-A8S (Mini)',      channels: 6,  weight: 1,  price: 2500,  desc: '6-ch mini iBus RX' },
         { id: 'rx-mid',    name: 'FlySky FS-iA6B',            channels: 6,  weight: 15, price: 2500,  desc: '6-ch PWM/iBus RX' },
         { id: 'rx-high',   name: 'FrSky R-XSR',               channels: 16, weight: 2,  price: 6250,  desc: '16-ch SBUS + telemetry' }
@@ -107,7 +107,7 @@ const PlaneData = {
     wiring: {
       label: 'Wiring & Connectors',
       tiers: [
-        { id: 'wire-custom', name: 'Power Distribution / Wiring', weight: 18, price: 1000,  desc: 'Wiring from budget sheet' },
+        { id: 'wire-custom', name: 'Power Distribution / Wiring', weight: 0,  price: 1000,  desc: 'Wiring from budget sheet' },
         { id: 'wire-budget', name: '16-20 AWG + Deans',           weight: 15, price: 200,   desc: 'Generic wire + Deans connector' },
         { id: 'wire-mid',    name: '14-18 AWG + XT60',            weight: 18, price: 225,   desc: 'Silicon wire + XT60 connector' },
         { id: 'wire-high',   name: '12-14 AWG + XT90',            weight: 22, price: 500,   desc: 'Heavy duty wire + XT90' }
@@ -116,7 +116,7 @@ const PlaneData = {
     voltmonitor: {
       label: 'Voltage Monitor',
       tiers: [
-        { id: 'vmon-custom', name: 'Voltage Monitor / Alarm',      weight: 7, price: 600,   desc: 'Voltage Alarm from budget sheet' },
+        { id: 'vmon-custom', name: 'Voltage Monitor / Alarm',      weight: 0,  price: 600,   desc: 'Voltage Alarm from budget sheet' },
         { id: 'vmon-budget', name: 'Generic LiPo Alarm',           weight: 5, price: 350,   desc: 'Basic low-voltage alarm' },
         { id: 'vmon-mid',    name: '3S LiPo Alarm w/ Buzzer',      weight: 7, price: 550,   desc: 'Buzzer alarm, 2S-3S' },
         { id: 'vmon-high',   name: 'Telemetry Voltage Sensor',     weight: 5, price: 2500,  desc: 'TX display (needs FrSky)' }
@@ -126,18 +126,18 @@ const PlaneData = {
 
   /* ── Materials (costs in PKR) ── */
   materials: {
-    fuselage: { label: 'Fuselage', surfaceArea_cm2: 600, thickness_mm: 2 },
-    wing:     { label: 'Wing',     surfaceArea_cm2: 800, thickness_mm: 1.5 },
-    tail:     { label: 'V-Tail',   surfaceArea_cm2: 200, thickness_mm: 1.2 },
-    mount:    { label: 'Motor Mount', surfaceArea_cm2: 40, thickness_mm: 4 }
+    fuselage: { label: 'Fuselage', baseFoamWeight: 150, surfaceArea_cm2: 600, thickness_mm: 2 },
+    wing:     { label: 'Wing',     baseFoamWeight: 150, surfaceArea_cm2: 800, thickness_mm: 1.5 },
+    tail:     { label: 'V-Tail',   baseFoamWeight: 40,  surfaceArea_cm2: 200, thickness_mm: 1.2 },
+    mount:    { label: 'Motor Mount', baseFoamWeight: 10, surfaceArea_cm2: 40, thickness_mm: 4 }
   },
 
   materialOptions: [
-    { id: 'foam',         name: 'EPS Foamboard',     density: 0.03,  costPerPart: [7500, 6000, 3000, 1000],  strength: 3, color: '#b8d4e3', desc: 'Very light, impact-resistant, cheap sheets' },
-    { id: 'balsa',        name: 'Balsa Wood',        density: 0.16,  costPerPart: [2200, 1700, 850, 550],    strength: 2, color: '#d4b483', desc: 'Lightest wood, easy to cut' },
-    { id: 'plywood',      name: 'Plywood (Birch)',   density: 0.55,  costPerPart: [1400, 1100, 550, 850],    strength: 4, color: '#8B6914', desc: 'Strong at mounts/firewall' },
-    { id: 'fiberglass',   name: 'Fiberglass',        density: 1.80,  costPerPart: [4200, 3400, 1400, 1100],  strength: 7, color: '#e8e8d0', desc: 'Light-medium, very strong' },
-    { id: 'carbonfiber',  name: 'Carbon Fiber',      density: 1.55,  costPerPart: [8400, 7000, 2800, 2200],  strength: 9, color: '#3a3a3a', desc: 'Best strength-to-weight ratio' }
+    { id: 'foam',         name: 'EPS Foamboard',     density: 0.03, weightFactor: 1.0, costPerPart: [7500, 6000, 3000, 1000],  strength: 3, color: '#b8d4e3', desc: 'Very light, impact-resistant, cheap sheets' },
+    { id: 'balsa',        name: 'Balsa Wood',        density: 0.16, weightFactor: 1.2, costPerPart: [2200, 1700, 850, 550],    strength: 2, color: '#d4b483', desc: 'Lightest wood, easy to cut' },
+    { id: 'plywood',      name: 'Plywood (Birch)',   density: 0.55, weightFactor: 1.8, costPerPart: [1400, 1100, 550, 850],    strength: 4, color: '#8B6914', desc: 'Strong at mounts/firewall' },
+    { id: 'fiberglass',   name: 'Fiberglass',        density: 1.80, weightFactor: 2.2, costPerPart: [4200, 3400, 1400, 1100],  strength: 7, color: '#e8e8d0', desc: 'Light-medium, very strong' },
+    { id: 'carbonfiber',  name: 'Carbon Fiber',      density: 1.55, weightFactor: 1.5, costPerPart: [8400, 7000, 2800, 2200],  strength: 9, color: '#3a3a3a', desc: 'Best strength-to-weight ratio' }
   ],
 
   /** Additional build items (sum = 12,482 PKR) */
@@ -150,7 +150,7 @@ const PlaneData = {
     { name: 'Competition entry fees', price: 4382 }
   ],
 
-  miscWeight: 30   // grams: glue, connectors, wiring, screws
+  miscWeight: 115   // grams: carbon fiber spar (40g) + wiring/glue/covering (50g) + landing gear (25g)
 };
 
 /* ── Default Selections ── */
