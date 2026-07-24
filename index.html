@@ -1179,9 +1179,6 @@
 
     // Total
     const totalEl = document.getElementById('budget-total-number');
-    if (totalEl) {
-      animateNumber(totalEl, costs.total);
-    }
 
     // Table
     const tbody = document.getElementById('budget-table-body');
@@ -1256,7 +1253,6 @@
     document.getElementById('alloc-total').textContent = 'Rs. ' + allocTotal.toLocaleString();
 
     // Total header animation (includes contingency)
-    const totalEl = document.getElementById('budget-total-number');
     if (totalEl) {
       animateNumber(totalEl, allocTotal);
     }

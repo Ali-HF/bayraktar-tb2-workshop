@@ -135,7 +135,7 @@ const Calc = (() => {
     const batteryW = battery ? battery.weight : 0;
     const propW = prop ? prop.weight : 0;
     const rxW = receiver ? receiver.weight : 0;
-    const txW = transmitter ? transmitter.weight : 0;
+    const txW = 0; // Transmitter (TX) is held by the pilot on the ground, so it contributes 0g to airborne weight
     const becW = bec ? bec.weight : 0;
     const wireW = wiring ? wiring.weight : 0;
     const vmonW = voltmonitor ? voltmonitor.weight : 0;
