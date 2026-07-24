@@ -477,31 +477,83 @@
     </div>
   </div>
 
-  <!-- Itemized Table -->
-  <div class="card" style="margin-top:24px;">
-    <div class="card-header">
-      <div class="card-title"><span class="dot" style="background:var(--accent-warm)"></span> Itemized Cost Table</div>
+  <!-- Itemized & Allocated Budget Summary -->
+  <div class="grid-2" style="margin-top:24px; align-items: start;">
+    <!-- Left Column: Itemized Cost Table -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="dot" style="background:var(--accent-warm)"></span> Itemized Cost Table</div>
+      </div>
+      <div style="overflow-x: auto;">
+        <table class="data-table" id="budget-table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Component</th>
+              <th>Unit Price</th>
+              <th>Qty</th>
+              <th>Subtotal</th>
+            </tr>
+          </thead>
+          <tbody id="budget-table-body">
+            <!-- Filled by JS -->
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4" style="font-weight:700; text-align:right;">Total</td>
+              <td class="mono" style="font-weight:700; color:var(--accent-warm);" id="budget-table-total">Rs. 0</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
     </div>
-    <table class="data-table" id="budget-table">
-      <thead>
-        <tr>
-          <th>Category</th>
-          <th>Component</th>
-          <th>Unit Price</th>
-          <th>Qty</th>
-          <th>Subtotal</th>
-        </tr>
-      </thead>
-      <tbody id="budget-table-body">
-        <!-- Filled by JS -->
-      </tbody>
-      <tfoot>
-        <tr>
-          <td colspan="4" style="font-weight:700; text-align:right;">Total</td>
-          <td class="mono" style="font-weight:700; color:var(--accent-warm);" id="budget-table-total">Rs. 0</td>
-        </tr>
-      </tfoot>
-    </table>
+
+    <!-- Right Column: Allocated Budget Summary (Slide deck format) -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="dot" style="background:var(--accent-cyan)"></span> Allocated Budget Summary</div>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>System Category</th>
+            <th>Allocated Cost (PKR)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-size:0.8rem; padding:10px 12px;">Structure &amp; Hardware (EPS, adhesives, covering, paint, tools)</td>
+            <td id="alloc-struct" class="mono" style="font-size:0.8rem; padding:10px 12px; font-weight:600;">Rs. 0</td>
+          </tr>
+          <tr>
+            <td style="font-size:0.8rem; padding:10px 12px;">Propulsion (Motor, ESC, propellers)</td>
+            <td id="alloc-prop" class="mono" style="font-size:0.8rem; padding:10px 12px; font-weight:600;">Rs. 0</td>
+          </tr>
+          <tr>
+            <td style="font-size:0.8rem; padding:10px 12px;">Electronics (Battery, servos, TX/RX system)</td>
+            <td id="alloc-elec" class="mono" style="font-size:0.8rem; padding:10px 12px; font-weight:600;">Rs. 0</td>
+          </tr>
+          <tr>
+            <td style="font-size:0.8rem; padding:10px 12px;">Miscellaneous (Logistics, entry fees)</td>
+            <td id="alloc-misc" class="mono" style="font-size:0.8rem; padding:10px 12px; font-weight:600;">Rs. 0</td>
+          </tr>
+          <tr style="border-top:2px solid var(--border-subtle); font-weight:600;">
+            <td style="font-size:0.8rem; padding:10px 12px;">Subtotal</td>
+            <td id="alloc-subtotal" class="mono" style="font-size:0.8rem; padding:10px 12px; color:var(--text-primary);">Rs. 0</td>
+          </tr>
+          <tr>
+            <td style="font-size:0.85rem; padding:10px 12px; color:var(--text-secondary);">Contingency (12%)</td>
+            <td id="alloc-contingency" class="mono" style="font-size:0.85rem; padding:10px 12px; color:var(--text-secondary);">Rs. 0</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td style="font-weight:700; text-align:right; font-size:0.9rem; padding:12px;">Estimated Total</td>
+            <td id="alloc-total" class="mono" style="font-weight:700; color:var(--accent-warm); font-size:0.95rem; padding:12px;">Rs. 0</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
   </div>
 </section>
 
@@ -1179,17 +1231,50 @@
       document.getElementById('budget-table-total').textContent = 'Rs. ' + costs.total.toLocaleString();
     }
 
+    // Dynamic Allocated Budget Summary Calculations
+    const structCost = (costs.mat_fuselage || 0) + (costs.mat_wing || 0) + (costs.mat_tail || 0) + (costs.mat_mount || 0) +
+                       PlaneData.additionalBuildItems.filter(item => !['Logistics & transport', 'Competition entry fees'].includes(item.name))
+                                                     .reduce((sum, item) => sum + item.price, 0);
+
+    const propulsionCost = (costs.motor || 0) + (costs.esc || 0) + (costs.prop || 0);
+
+    const electronicsCost = (costs.battery || 0) + (costs.servos || 0) + (costs.receiver || 0) + (costs.transmitter || 0) + (costs.bec || 0) + (costs.wiring || 0) + (costs.voltmonitor || 0);
+
+    const miscCost = PlaneData.additionalBuildItems.filter(item => ['Logistics & transport', 'Competition entry fees'].includes(item.name))
+                                                    .reduce((sum, item) => sum + item.price, 0);
+
+    const allocSubtotal = structCost + propulsionCost + electronicsCost + miscCost;
+    const allocContingency = Math.round(allocSubtotal * 0.12);
+    const allocTotal = allocSubtotal + allocContingency;
+
+    document.getElementById('alloc-struct').textContent = 'Rs. ' + structCost.toLocaleString();
+    document.getElementById('alloc-prop').textContent = 'Rs. ' + propulsionCost.toLocaleString();
+    document.getElementById('alloc-elec').textContent = 'Rs. ' + electronicsCost.toLocaleString();
+    document.getElementById('alloc-misc').textContent = 'Rs. ' + miscCost.toLocaleString();
+    document.getElementById('alloc-subtotal').textContent = 'Rs. ' + allocSubtotal.toLocaleString();
+    document.getElementById('alloc-contingency').textContent = 'Rs. ' + allocContingency.toLocaleString();
+    document.getElementById('alloc-total').textContent = 'Rs. ' + allocTotal.toLocaleString();
+
+    // Total header animation (includes contingency)
+    const totalEl = document.getElementById('budget-total-number');
+    if (totalEl) {
+      animateNumber(totalEl, allocTotal);
+    }
+
     // Charts
     Charts.updateBudget(costs);
 
     // Budget target
-    updateBudgetTarget();
+    updateBudgetTarget(allocTotal);
   }
 
-  function updateBudgetTarget() {
-    const costs = Calc.totalCost();
+  function updateBudgetTarget(allocTotal) {
+    if (allocTotal === undefined) {
+      const costs = Calc.totalCost();
+      allocTotal = Math.round(costs.total * 1.12);
+    }
     const target = parseInt(document.getElementById('budget-target-slider')?.value || 45000);
-    const pct = Math.min(100, (costs.total / target) * 100);
+    const pct = Math.min(100, (allocTotal / target) * 100);
     const fill = document.getElementById('budget-fill');
     const badge = document.getElementById('budget-pct');
 
