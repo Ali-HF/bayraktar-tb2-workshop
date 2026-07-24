@@ -58,27 +58,27 @@ const Calc = (() => {
 
   /* ── Electronics Weight (grams) ── */
   function electronicsWeight() {
-    const motor       = _getTier('motor',       AppState.get('motor'));
-    const esc         = _getTier('esc',         AppState.get('esc'));
-    const battery     = _getTier('battery',     AppState.get('battery'));
-    const servo       = _getTier('servo',       AppState.get('servo'));
-    const prop        = _getTier('prop',        AppState.get('prop'));
-    const receiver    = _getTier('receiver',    AppState.get('receiver'));
+    const motor = _getTier('motor', AppState.get('motor'));
+    const esc = _getTier('esc', AppState.get('esc'));
+    const battery = _getTier('battery', AppState.get('battery'));
+    const servo = _getTier('servo', AppState.get('servo'));
+    const prop = _getTier('prop', AppState.get('prop'));
+    const receiver = _getTier('receiver', AppState.get('receiver'));
     const transmitter = _getTier('transmitter', AppState.get('transmitter'));
-    const bec         = _getTier('bec',         AppState.get('bec'));
-    const wiring      = _getTier('wiring',      AppState.get('wiring'));
+    const bec = _getTier('bec', AppState.get('bec'));
+    const wiring = _getTier('wiring', AppState.get('wiring'));
     const voltmonitor = _getTier('voltmonitor', AppState.get('voltmonitor'));
 
     const servoTotal = servo ? (servo.weight * (servo.qty || 3)) : 0;
-    const motorW     = motor ? motor.weight : 0;
-    const escW       = esc ? esc.weight : 0;
-    const batteryW   = battery ? battery.weight : 0;
-    const propW      = prop ? prop.weight : 0;
-    const rxW        = receiver ? receiver.weight : 0;
-    const txW        = transmitter ? transmitter.weight : 0;
-    const becW       = bec ? bec.weight : 0;
-    const wireW      = wiring ? wiring.weight : 0;
-    const vmonW      = voltmonitor ? voltmonitor.weight : 0;
+    const motorW = motor ? motor.weight : 0;
+    const escW = esc ? esc.weight : 0;
+    const batteryW = battery ? battery.weight : 0;
+    const propW = prop ? prop.weight : 0;
+    const rxW = receiver ? receiver.weight : 0;
+    const txW = transmitter ? transmitter.weight : 0;
+    const becW = bec ? bec.weight : 0;
+    const wireW = wiring ? wiring.weight : 0;
+    const vmonW = voltmonitor ? voltmonitor.weight : 0;
 
     return {
       motor: motorW,
@@ -137,7 +137,7 @@ const Calc = (() => {
   /* ── Flight Time (minutes) ── */
   function flightTime() {
     const battery = _getTier('battery', AppState.get('battery'));
-    const motor   = _getTier('motor',   AppState.get('motor'));
+    const motor = _getTier('motor', AppState.get('motor'));
     // Assume 70% throttle average
     const avgCurrent = motor.maxCurrent * 0.7;
     return (battery.capacity / (avgCurrent * 1000)) * 60 * 0.8;
@@ -146,7 +146,7 @@ const Calc = (() => {
   /* ── Battery C-Rating Check ── */
   function cRatingCheck() {
     const battery = _getTier('battery', AppState.get('battery'));
-    const motor   = _getTier('motor',   AppState.get('motor'));
+    const motor = _getTier('motor', AppState.get('motor'));
     const maxDischargeCurrent = (battery.capacity / 1000) * battery.cRating;
     const margin = ((maxDischargeCurrent - motor.maxCurrent) / motor.maxCurrent) * 100;
     return {
@@ -159,9 +159,9 @@ const Calc = (() => {
 
   /* ── Top Speed Estimate (km/h) ── */
   function topSpeed() {
-    const motor   = _getTier('motor',   AppState.get('motor'));
+    const motor = _getTier('motor', AppState.get('motor'));
     const battery = _getTier('battery', AppState.get('battery'));
-    const prop    = _getTier('prop',    AppState.get('prop'));
+    const prop = _getTier('prop', AppState.get('prop'));
 
     const rpm = motor.kv * battery.voltage;
     const pitchInches = prop.pitch;
@@ -193,6 +193,139 @@ const Calc = (() => {
   function thrustToWeightStatus(val) {
     if (val >= 0.5 && val <= 1.2) return 'green';
     if (val >= 0.3 && val <= 1.5) return 'yellow';
+    return 'red';
+  }
+
+  /* ============================================================
+     ── Center of Gravity (CG) / Weight & Balance ──
+     ============================================================
+     Standard aeromodelling method:
+       1. Compute the wing's Mean Aerodynamic Chord (MAC) and where
+          its leading edge sits along the fuselage (accounts for sweep).
+       2. Sum moments (weight × fuselage station) of every mass in the
+          plane about the nose, divide by total weight → CG station.
+       3. Express CG as %MAC (distance behind the MAC leading edge,
+          as a fraction of MAC length) — the number builders actually
+          balance against. Target band: 25–33% MAC.
+
+     Component fuselage-station (mm from nose) placements below are
+     REASONABLE ASSUMPTIONS, not measured positions — the design brief
+     doesn't specify exact component siting, only overall dimensions.
+     This mirrors the same "clearly labeled estimate" approach already
+     used for structuralWeight(). If real component layout is known,
+     update CG_ASSUMED_STATIONS_MM accordingly.
+     ============================================================ */
+
+  const CG_ASSUMED_STATIONS_MM = {
+    motor: 15,   // firewall/nose-mounted
+    mount: 15,   // motor mount sits with the motor
+    esc: 110,   // just aft of motor, ahead of battery bay
+    battery: 170,   // main battery bay, ahead of wing for balance
+    receiver: 250,   // mid-fuselage, aft of battery
+    bec: 250,
+    voltmonitor: 170,
+    wiring: 200    // distributed through fuselage; approximate midpoint
+  };
+
+  function _wingLEStation_mm() {
+    return PlaneData.dimensions.noseToWingLE;
+  }
+
+  function _tailLEStation_mm() {
+    const d = PlaneData.dimensions;
+    // wing TE station = wing LE + root chord; tail LE = wing TE + given gap
+    return d.noseToWingLE + d.wingRootChord + d.wingTEtoTailLE;
+  }
+
+  /* ── Mean Aerodynamic Chord length (mm), standard trapezoidal-wing formula ── */
+  function macLength_mm() {
+    const d = PlaneData.dimensions;
+    const cr = d.wingRootChord, ct = d.wingTipChord;
+    return (2 / 3) * (cr + ct - (cr * ct) / (cr + ct));
+  }
+
+  /* ── Spanwise station (mm from root) where the MAC occurs ── */
+  function macSpanwiseY_mm() {
+    const d = PlaneData.dimensions;
+    const cr = d.wingRootChord, ct = d.wingTipChord;
+    return (d.wingspan / 6) * (cr + 2 * ct) / (cr + ct);
+  }
+
+  /* ── Fuselage station (mm from nose) of the MAC's leading edge,
+        shifted aft for sweep proportional to spanwise position ── */
+  function macLEStation_mm() {
+    const d = PlaneData.dimensions;
+    const halfSpan = d.wingspan / 2;
+    const yMAC = macSpanwiseY_mm();
+    const sweepAtMAC = d.wingSweepLE * (yMAC / halfSpan);
+    return d.noseToWingLE + sweepAtMAC;
+  }
+
+  /* ── Weight & Balance: sum moments of all point masses about the nose ── */
+  function centerOfGravity_mm() {
+    const d = PlaneData.dimensions;
+    const wingLE = _wingLEStation_mm();
+    const tailLE = _tailLEStation_mm();
+    const rootChord = d.wingRootChord;
+
+    const elec = electronicsWeight();
+    const struct = structuralWeight();
+
+    const points = [];
+    const addPoint = (w, x) => { if (w) points.push({ w, x }); };
+
+    // Electronics — point masses at assumed fuselage stations
+    addPoint(elec.motor, CG_ASSUMED_STATIONS_MM.motor);
+    addPoint(elec.esc, CG_ASSUMED_STATIONS_MM.esc);
+    addPoint(elec.battery, CG_ASSUMED_STATIONS_MM.battery);
+    addPoint(elec.receiver, CG_ASSUMED_STATIONS_MM.receiver);
+    addPoint(elec.bec, CG_ASSUMED_STATIONS_MM.bec);
+    addPoint(elec.wiring, CG_ASSUMED_STATIONS_MM.wiring);
+    addPoint(elec.voltmonitor, CG_ASSUMED_STATIONS_MM.voltmonitor);
+    addPoint(elec.prop, 0); // propeller disc, at the very nose
+
+    // Servos: split across ailerons (at wing) and ruddervators (at V-tail)
+    // — assume a typical 3-servo setup: 2 aileron + 1 ruddervator pair,
+    // weighted 2/3 at the wing, 1/3 at the tail.
+    if (elec.servos) {
+      const aileronStation = wingLE + rootChord * 0.4;
+      const tailServoStation = tailLE + d.vTailRootChord * 0.5;
+      addPoint(elec.servos * (2 / 3), aileronStation);
+      addPoint(elec.servos * (1 / 3), tailServoStation);
+    }
+
+    // Structural masses — approximate centroid of each part along the fuselage
+    if (struct.breakdown.fuselage) addPoint(struct.breakdown.fuselage.weight, d.fuselageLength * 0.45);
+    if (struct.breakdown.wing) addPoint(struct.breakdown.wing.weight, wingLE + rootChord * 0.4);
+    if (struct.breakdown.tail) addPoint(struct.breakdown.tail.weight, tailLE + d.vTailRootChord * 0.4);
+    if (struct.breakdown.mount) addPoint(struct.breakdown.mount.weight, CG_ASSUMED_STATIONS_MM.mount);
+
+    // Misc/hardware allowance — assumed distributed near fuselage midpoint
+    addPoint(PlaneData.miscWeight, d.fuselageLength * 0.5);
+
+    const totalW = points.reduce((s, p) => s + p.w, 0);
+    const moment = points.reduce((s, p) => s + p.w * p.x, 0);
+    const cgStation = totalW ? moment / totalW : 0;
+
+    return { station_mm: cgStation, totalWeight_g: totalW, points };
+  }
+
+  /* ── CG expressed as %MAC — the standard balance-point check ── */
+  function centerOfGravityPercentMAC() {
+    const mac = macLength_mm();
+    const macLE = macLEStation_mm();
+    const cg = centerOfGravity_mm().station_mm;
+    const pct = mac ? ((cg - macLE) / mac) * 100 : 0;
+    return { percentMAC: pct, macLEStation_mm: macLE, mac_mm: mac, cgStation_mm: cg };
+  }
+
+  /* ── Status: green = 25–33% MAC (standard sport-plane target band),
+        yellow = borderline, red = out of range.
+        Note: >33% (tail-heavy) is the dangerous direction — it risks
+        pitch instability/stalls. <25% (nose-heavy) just flies duller. ── */
+  function cgStatus(pct) {
+    if (pct >= 25 && pct <= 33) return 'green';
+    if (pct >= 20 && pct <= 38) return 'yellow';
     return 'red';
   }
 
@@ -228,6 +361,7 @@ const Calc = (() => {
     const ft = flightTime();
     const crc = cRatingCheck();
     const ts = topSpeed();
+    const cg = centerOfGravityPercentMAC();
 
     return {
       wingArea_mm2: wingArea_mm2(),
@@ -244,6 +378,7 @@ const Calc = (() => {
       flightTime: { value: ft, unit: 'min' },
       cRatingCheck: crc,
       topSpeed: ts,
+      cg: { ...cg, status: cgStatus(cg.percentMAC) },
       costs: totalCost()
     };
   }
@@ -255,6 +390,8 @@ const Calc = (() => {
     stallSpeed, aspectRatio, flightTime,
     cRatingCheck, topSpeed, totalCost,
     wingLoadingStatus, powerToWeightStatus, thrustToWeightStatus,
+    macLength_mm, macLEStation_mm, centerOfGravity_mm,
+    centerOfGravityPercentMAC, cgStatus,
     fullReport, _getTier, _getMaterial
   };
 })();
