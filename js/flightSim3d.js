@@ -516,9 +516,14 @@ const FlightSim3D = (() => {
     if (rRuddervatorMesh) {
       rRuddervatorMesh.rotation.y = THREE.MathUtils.degToRad(angles.rRuddervator);
     }
-    // Left ruddervator: mirrored geometry along Z-axis, so positive angle = TE up = negative Y rotation
+    // Left ruddervator: pivot is mirrored (scale.z = -1) to build the V-tail
+    // symmetrically. That mirroring already flips the visual sense of a Y
+    // rotation, so applying rotation.y = -angle on top of it double-flips
+    // the sign — which is what made pitch (should move both surfaces the
+    // SAME way, elevator-style) look like yaw (differential, rudder-style)
+    // and vice versa. Feeding the angle through unmirrored fixes it.
     if (lRuddervatorMesh) {
-      lRuddervatorMesh.rotation.y = THREE.MathUtils.degToRad(-angles.lRuddervator);
+      lRuddervatorMesh.rotation.y = THREE.MathUtils.degToRad(angles.lRuddervator);
     }
 
     // Propeller
