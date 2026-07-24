@@ -410,7 +410,6 @@ const FlightSim3D = (() => {
     mkElec(new THREE.BoxGeometry(0.12, 0.1, 0.08), 0xf1c40f, [wingX - rootC * 0.4, 0, -1.8], 'L Aileron Servo', '9g 1.8kg·cm');
     mkElec(new THREE.BoxGeometry(0.12, 0.1, 0.08), 0xf1c40f, [-0.6, -0.05, 0.9], 'R Ruddervator Servo', 'V-tail');
     mkElec(new THREE.BoxGeometry(0.12, 0.1, 0.08), 0xf1c40f, [-0.6, -0.05, -0.9], 'L Ruddervator Servo', 'V-tail');
-    mkElec(new THREE.SphereGeometry(0.11, 8, 6), 0x1abc9c, [1.9, -0.3, 0], 'EO/IR Camera Turret', 'Optical Payload');
 
     scene.add(electronicsGroup);
 

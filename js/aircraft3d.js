@@ -210,29 +210,6 @@ const Aircraft3D = (() => {
     addEdges(podMesh, 0.25);
     fuselageGroup.add(podMesh);
 
-    // Electro-optical Camera Turret (EO/IR Gimbal under nose)
-    const turretGroup = new THREE.Group();
-    const gimbalGeo = new THREE.SphereGeometry(0.11, 8, 6);
-    const gimbalMat = new THREE.MeshStandardMaterial({
-      color: 0x222222, roughness: 0.3, metalness: 0.7, flatShading: true
-    });
-    const gimbalMesh = new THREE.Mesh(gimbalGeo, gimbalMat);
-    gimbalMesh.position.set(noseX - 0.5, -fuseH * 0.55, 0);
-    addEdges(gimbalMesh, 0.3);
-    turretGroup.add(gimbalMesh);
-
-    // Camera lens glass
-    const lensGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.02, 8);
-    lensGeo.rotateZ(Math.PI / 2);
-    const lensMat = new THREE.MeshStandardMaterial({
-      color: 0x3498db, roughness: 0.1, metalness: 0.9, flatShading: true,
-      emissive: 0x1abc9c, emissiveIntensity: 0.3
-    });
-    const lens = new THREE.Mesh(lensGeo, lensMat);
-    lens.position.set(noseX - 0.42, -fuseH * 0.57, 0);
-    turretGroup.add(lens);
-    fuselageGroup.add(turretGroup);
-
     scene.add(fuselageGroup);
     partGroups.fuselage = fuselageGroup;
 
