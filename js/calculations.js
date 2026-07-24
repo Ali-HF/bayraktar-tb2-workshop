@@ -519,11 +519,6 @@ const Calc = (() => {
      COST
      ──────────────────────────────────────────────────────────── */
 
-  /**
-   * Full cost breakdown: itemized price of every selected electronics
-   * tier and material choice, plus a fixed misc/hardware allowance.
-   * @returns {object} per-item costs (PKR) plus a `total` field
-   */
   function totalCost() {
     const costs = {};
     ['motor', 'esc', 'battery', 'prop', 'receiver', 'transmitter', 'bec', 'wiring', 'voltmonitor'].forEach(cat => {
@@ -541,7 +536,9 @@ const Calc = (() => {
       costs['mat_' + pk] = mat ? mat.costPerPart[i] : 0;
     });
 
-    costs.misc = PlaneData.miscCost;
+    // Sum of additional build/R&D items (casing, film, adhesives, paints, tools, etc.)
+    const additionalSum = PlaneData.additionalBuildItems.reduce((sum, item) => sum + item.price, 0);
+    costs.misc = additionalSum;
     costs.total = Object.values(costs).reduce((a, b) => a + b, 0);
     return costs;
   }

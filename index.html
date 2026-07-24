@@ -1161,8 +1161,10 @@
         }
       });
 
-      // Misc
-      rows.push({ category: 'Hardware/Misc', name: 'Glue, wiring, screws, connectors', price: PlaneData.miscCost, qty: 1, subtotal: PlaneData.miscCost });
+      // Additional Build/R&D Items (sheets, film, adhesives, finishing, motor, esc, etc.)
+      PlaneData.additionalBuildItems.forEach(item => {
+        rows.push({ category: 'Chassis & Build Cost', name: item.name, price: item.price, qty: 1, subtotal: item.price });
+      });
 
       tbody.innerHTML = rows.map(r => `
         <tr>
