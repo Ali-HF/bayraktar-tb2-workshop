@@ -40,8 +40,12 @@ const Router = (() => {
     _onNavigate = onNavigate;
     window.addEventListener('hashchange', () => navigate(location.hash));
     // Initial route
-    if (!location.hash) location.hash = '#overview';
-    else navigate(location.hash);
+    if (!location.hash) {
+      location.hash = '#overview';
+      navigate('#overview');
+    } else {
+      navigate(location.hash);
+    }
   }
 
   return { pages, init, navigate };
