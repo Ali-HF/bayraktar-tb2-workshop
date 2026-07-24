@@ -514,75 +514,76 @@
     <p class="page-subtitle">NACA 4412 airfoil — animated streamlines, angle-of-attack control, and approximate lift coefficient curve</p>
   </div>
 
-  <div class="grid-2" style="margin-bottom:20px;">
-    <!-- Controls -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title"><span class="dot" style="background:var(--accent-cyan)"></span> Simulation Controls</div>
-      </div>
-
-      <div class="slider-group">
-        <div class="slider-label">
-          <strong>Angle of Attack</strong>
-          <span id="aoa-display">5.0°</span>
+  <div class="grid-model">
+    <!-- Left Column: Controls -->
+    <div class="panel">
+      <div class="panel-header">⚙️ Simulation Controls</div>
+      <div class="panel-body" style="padding:16px;">
+        <div class="slider-group">
+          <div class="slider-label">
+            <strong>Angle of Attack</strong>
+            <span id="aoa-display">5.0°</span>
+          </div>
+          <input type="range" id="aoa-slider" min="-5" max="20" value="5" step="0.5">
         </div>
-        <input type="range" id="aoa-slider" min="-5" max="20" value="5" step="0.5">
-      </div>
 
-      <div class="slider-group">
-        <div class="slider-label">
-          <strong>Airspeed Multiplier</strong>
-          <span id="airspeed-display">1.0×</span>
+        <div class="slider-group">
+          <div class="slider-label">
+            <strong>Airspeed Multiplier</strong>
+            <span id="airspeed-display">1.0×</span>
+          </div>
+          <input type="range" id="airspeed-slider" min="0.2" max="3" value="1" step="0.1">
         </div>
-        <input type="range" id="airspeed-slider" min="0.2" max="3" value="1" step="0.1">
-      </div>
 
-      <div style="margin-top:14px; display: flex; align-items: center; gap: 8px;">
-        <span style="font-size:0.8rem; color:var(--text-secondary); min-width: 100px;">Chord Section:</span>
-        <div class="btn-group" id="chord-toggle" style="flex: 1;">
-          <button class="btn btn-sm active" data-chord="root" style="width: 50%;">Root (60mm)</button>
-          <button class="btn btn-sm" data-chord="tip" style="width: 50%;">Tip (40mm)</button>
+        <div style="margin-top:14px; display: flex; align-items: center; gap: 8px;">
+          <span style="font-size:0.8rem; color:var(--text-secondary); min-width: 100px;">Chord Section:</span>
+          <div class="btn-group" id="chord-toggle" style="flex: 1;">
+            <button class="btn btn-sm active" data-chord="root" style="width: 50%;">Root (60mm)</button>
+            <button class="btn btn-sm" data-chord="tip" style="width: 50%;">Tip (40mm)</button>
+          </div>
         </div>
-      </div>
 
-      <div style="margin-top:12px; display: flex; align-items: center; gap: 8px;">
-        <span style="font-size:0.8rem; color:var(--text-secondary); min-width: 100px;">Airflow Mode:</span>
-        <div class="btn-group" id="vis-mode-toggle" style="flex: 1;">
-          <button class="btn btn-sm active" data-mode="particles" style="width: 50%;">Particles</button>
-          <button class="btn btn-sm" data-mode="streamlines" style="width: 50%;">Airflow Lines</button>
+        <div style="margin-top:12px; display: flex; align-items: center; gap: 8px;">
+          <span style="font-size:0.8rem; color:var(--text-secondary); min-width: 100px;">Airflow Mode:</span>
+          <div class="btn-group" id="vis-mode-toggle" style="flex: 1;">
+            <button class="btn btn-sm active" data-mode="particles" style="width: 50%;">Particles</button>
+            <button class="btn btn-sm" data-mode="streamlines" style="width: 50%;">Airflow Lines</button>
+          </div>
         </div>
-      </div>
 
-      <div style="margin-top:20px; padding:12px; background:rgba(255,255,255,0.03); border-radius:var(--radius-sm);">
-        <div style="font-size:0.72rem; color:var(--text-muted); margin-bottom:6px;">NACA 4412 Parameters</div>
-        <div style="font-size:0.8rem; color:var(--text-secondary); line-height:1.8;">
-          Max camber: <strong style="color:var(--accent-warm);">4%</strong> at <strong style="color:var(--accent-warm);">40%</strong> chord<br>
-          Thickness: <strong style="color:var(--accent-warm);">12%</strong> of chord<br>
-          Critical AoA: <strong style="color:var(--accent-red);">~15°</strong> (stall onset)
+        <div style="margin-top:20px; padding:12px; background:rgba(255,255,255,0.03); border-radius:var(--radius-sm);">
+          <div style="font-size:0.72rem; color:var(--text-muted); margin-bottom:6px;">NACA 4412 Parameters</div>
+          <div style="font-size:0.8rem; color:var(--text-secondary); line-height:1.8;">
+            Max camber: <strong style="color:var(--accent-warm);">4%</strong> at <strong style="color:var(--accent-warm);">40%</strong> chord<br>
+            Thickness: <strong style="color:var(--accent-warm);">12%</strong> of chord<br>
+            Critical AoA: <strong style="color:var(--accent-red);">~15°</strong> (stall onset)
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- CL Chart -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title"><span class="dot" style="background:var(--accent-warm)"></span> C<sub>L</sub> vs Angle of Attack</div>
+    <!-- Center: Airfoil Canvas -->
+    <div class="grid-model-center">
+      <div class="model-container" style="height: 100%; display: flex; flex-direction: column;">
+        <div class="panel-header" style="justify-content: space-between;">
+          <div class="card-title"><span class="dot" style="background:var(--accent-green)"></span> Streamline Visualization</div>
+          <div id="airfoil-cl-badge" class="badge badge-pass">C_L = 0.95</div>
+        </div>
+        <div style="flex: 1; overflow: hidden; position: relative;">
+          <canvas id="airfoil-canvas" style="width: 100%; height: 100%; display: block;"></canvas>
+        </div>
       </div>
-      <div class="chart-container">
-        <canvas id="cl-chart"></canvas>
-      </div>
-      <p class="stat-note">Simplified thin-airfoil-theory approximation. Post-stall behavior is modeled as a linear drop-off, not a CFD result.</p>
     </div>
-  </div>
 
-  <!-- Airfoil Canvas -->
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title"><span class="dot" style="background:var(--accent-green)"></span> Streamline Visualization</div>
-      <div id="airfoil-cl-badge" class="badge badge-pass">C_L = 0.95</div>
-    </div>
-    <div class="airfoil-container">
-      <canvas id="airfoil-canvas"></canvas>
+    <!-- Right Column: CL Chart -->
+    <div class="panel">
+      <div class="panel-header">📈 C_L vs AoA Curve</div>
+      <div class="panel-body" style="padding:16px; display: flex; flex-direction: column; height: 100%;">
+        <div class="chart-container" style="flex: 1; min-height: 200px; position: relative;">
+          <canvas id="cl-chart"></canvas>
+        </div>
+        <p class="stat-note" style="margin-top: 10px; font-size: 0.7rem; line-height: 1.4; color: var(--text-muted);">Thin-airfoil-theory approximation with stall model.</p>
+      </div>
     </div>
   </div>
 </section>

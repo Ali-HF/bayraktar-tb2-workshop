@@ -379,7 +379,7 @@ const AirfoilSim = (() => {
     if (!canvas) return;
     const parent = canvas.parentElement;
     canvas.width = parent.clientWidth;
-    canvas.height = Math.max(400, parent.clientHeight);
+    canvas.height = parent.clientHeight || 400;
   }
 
   function start() {
