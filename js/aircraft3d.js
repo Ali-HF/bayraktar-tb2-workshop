@@ -442,16 +442,23 @@ const Aircraft3D = (() => {
 
     // Main Gear Struts & Wheels (Angled out under fuselage)
     [-1, 1].forEach(side => {
-      const mainStrutGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.5, 6);
+      const dY = 0.41;
+      const dZ = 0.60;
+      const len = Math.sqrt(dY * dY + dZ * dZ);
+      const angle = Math.atan2(dZ, dY);
+
+      const mainStrutGeo = new THREE.CylinderGeometry(0.016, 0.016, len, 6);
       const mainStrut = new THREE.Mesh(mainStrutGeo, gearMat);
-      mainStrut.position.set(wingX + 0.1, -fuseH * 0.75, side * 0.45);
-      mainStrut.rotation.z = -side * 0.15;
+      // Midpoint position between bottom of fuselage and the wheel
+      mainStrut.position.set(wingX + 0.1, -0.425, side * 0.35);
+      // Tilt outward in YZ plane
+      mainStrut.rotation.x = side * angle;
       gearGroup.add(mainStrut);
 
       const mainWheelGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.04, 8);
       mainWheelGeo.rotateX(Math.PI / 2);
       const mainWheel = new THREE.Mesh(mainWheelGeo, wheelMat);
-      mainWheel.position.set(wingX + 0.1, -fuseH * 1.2, side * 0.65);
+      mainWheel.position.set(wingX + 0.1, -0.63, side * 0.65);
       gearGroup.add(mainWheel);
     });
 
