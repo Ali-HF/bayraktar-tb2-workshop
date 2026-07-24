@@ -90,53 +90,144 @@ const AirfoilSim = (() => {
     };
   }
 
-  /* ── Flow field (simplified potential flow around airfoil) ── */
+  /* ── Flow field — surface-conforming potential flow ── */
   function flowVelocity(px, py, aoaRad) {
-    // Simple uniform flow + circulation model
     const U = PARTICLE_SPEED * airspeed;
-    const cosA = Math.cos(aoaRad);
-    const sinA = Math.sin(aoaRad);
 
-    // Distance from airfoil center
-    const cx = 0.5, cy = 0;
-    const dx = px - cx;
-    const dy = py - cy;
-    const r2 = dx * dx + dy * dy;
-    const r = Math.sqrt(r2);
+    // Transform to local airfoil coordinates (rotate by -AoA around quarter-chord)
+    const rx = (px - 0.25) * Math.cos(-aoaRad) + py * Math.sin(-aoaRad) + 0.25;
+    const ry = -(px - 0.25) * Math.sin(-aoaRad) + py * Math.cos(-aoaRad);
 
-    // Base uniform flow
-    let vx = U * cosA;
-    let vy = U * sinA;
+    // Start with uniform freestream in local coords
+    let vx_loc = U;
+    let vy_loc = 0;
 
-    if (r > 0.05 && r < 3) {
-      // Circulation effect (Kutta condition approximation)
-      const gamma = U * Math.PI * Math.sin(aoaRad + camber * 4) * 0.5;
-      vx += gamma * dy / (2 * Math.PI * r2);
-      vy -= gamma * dx / (2 * Math.PI * r2);
+    // Only apply airfoil effects in the relevant region
+    if (rx > -0.3 && rx < 1.5) {
+      const clampX = Math.max(0.001, Math.min(0.999, rx));
+      const yc = nacaCamberLine(clampX);
+      const yt = nacaThickness(clampX);
+      const dyc = nacaCamberSlope(clampX);
+      const y_upper = yc + yt;
+      const y_lower = yc - yt;
 
-      // Speed up over top surface (Bernoulli effect)
-      if (dy > 0 && r < 0.5) {
-        vx *= 1 + 0.8 * (0.5 - r);
+      // Which surface are we nearest?
+      const distFromCamber = ry - yc;
+      const nearestSurfY = (distFromCamber >= 0) ? y_upper : y_lower;
+      const signedDist = ry - nearestSurfY; // positive = safely outside, negative = inside
+
+      // Surface tangent and outward normal
+      const theta = Math.atan(dyc);
+      const tx = Math.cos(theta);
+      const ty = Math.sin(theta);
+      // Outward normal (points away from surface)
+      const nx = (distFromCamber >= 0) ? -Math.sin(theta) : Math.sin(theta);
+      const ny = (distFromCamber >= 0) ? Math.cos(theta) : -Math.cos(theta);
+
+      // ── Surface-normal repulsion: prevents particles from ever reaching the body ──
+      const repulsionRange = 0.12; // how far out the repulsion reaches
+      if (rx >= -0.05 && rx <= 1.05) {
+        const dist = Math.abs(signedDist);
+        if (dist < repulsionRange) {
+          // Exponential repulsion — very strong close to surface, fades with distance
+          const strength = U * 1.8 * Math.exp(-dist / 0.025);
+          vx_loc += nx * strength;
+          vy_loc += ny * strength;
+        }
       }
 
-      // Slow down under bottom surface slightly
-      if (dy < 0 && r < 0.4) {
-        vx *= 0.9;
+      // ── Surface-tangent guidance: makes particles follow the contour (Coanda) ──
+      const influenceRange = Math.max(0.12, yt * 4);
+      const absDist = Math.abs(signedDist);
+      if (absDist < influenceRange && rx >= -0.05 && rx <= 1.05) {
+        const proximity = 1.0 - absDist / influenceRange;
+        // Speed varies: faster over top (Bernoulli), normal under bottom
+        let surfaceSpeed = U;
+        if (distFromCamber >= 0) {
+          surfaceSpeed = U * (1.0 + 0.5 * Math.sin(Math.PI * clampX) * (thickness / 0.12));
+        } else {
+          surfaceSpeed = U * (1.0 + 0.15 * Math.sin(Math.PI * clampX) * (thickness / 0.12));
+        }
+
+        const blend = proximity * proximity * 0.7;
+        vx_loc = vx_loc * (1 - blend) + tx * surfaceSpeed * blend;
+        vy_loc = vy_loc * (1 - blend) + ty * surfaceSpeed * blend;
       }
 
-      // Deflection behind trailing edge (downwash)
-      if (dx > 0.3 && Math.abs(dy) < 0.3) {
-        vy += sinA * U * 0.3 * Math.exp(-dx);
+      // ── Leading edge stagnation split: deflect particles up or down before nose ──
+      if (rx < 0.15 && rx > -0.25) {
+        const dyLE = ry - yc;
+        const rLE = Math.sqrt((rx * rx) + (dyLE * dyLE));
+        if (rLE < 0.25 && rLE > 0.001) {
+          // Strong radial push that decays with distance
+          const pushStrength = U * 2.0 * Math.exp(-rLE / 0.06);
+          const pushX = (rx / rLE) * pushStrength * 0.3;  // slight upstream slow
+          const pushY = (dyLE / rLE) * pushStrength;       // strong vertical split
+          vx_loc -= pushX;
+          vy_loc += pushY;
+        }
       }
     }
 
-    // Stall: turbulent separation on top
-    if (aoa > 14 && dy > 0 && dx > 0.3 && r < 0.6) {
-      vx *= 0.3 + Math.random() * 0.4;
-      vy += (Math.random() - 0.5) * U * 0.5;
+    // Circulation for lift (vortex at quarter-chord)
+    const dx_v = rx - 0.25;
+    const dy_v = ry;
+    const r2_v = dx_v * dx_v + dy_v * dy_v;
+    if (r2_v > 0.02) {
+      const gamma = U * Math.PI * Math.sin(aoaRad + camber * 4) * 0.35;
+      vx_loc += gamma * dy_v / (2 * Math.PI * r2_v);
+      vy_loc -= gamma * dx_v / (2 * Math.PI * r2_v);
     }
+
+    // Downwash behind trailing edge
+    if (rx > 1.0) {
+      vy_loc -= U * Math.sin(aoaRad) * 0.35 * Math.exp(-1.5 * (rx - 1.0));
+    }
+
+    // Stall turbulence
+    if (aoa > 14 && ry > 0 && rx > 0.3 && rx < 1.3) {
+      const stallFactor = Math.min(1, (aoa - 14) / 6);
+      vx_loc *= (1 - 0.5 * stallFactor) + Math.random() * 0.25 * stallFactor;
+      vy_loc += (Math.random() - 0.5) * U * 0.7 * stallFactor;
+    }
+
+    // Ensure minimum forward velocity
+    vx_loc = Math.max(U * 0.15, vx_loc);
+
+    // Transform back to global coordinates
+    const vx = vx_loc * Math.cos(aoaRad) - vy_loc * Math.sin(aoaRad);
+    const vy = vx_loc * Math.sin(aoaRad) + vy_loc * Math.cos(aoaRad);
 
     return { vx, vy };
+  }
+
+  /* ── Project a point out of the airfoil body onto the nearest surface ── */
+  function projectOutOfAirfoil(px, py, aoaRad) {
+    let rx = (px - 0.25) * Math.cos(-aoaRad) + py * Math.sin(-aoaRad) + 0.25;
+    let ry = -(px - 0.25) * Math.sin(-aoaRad) + py * Math.cos(-aoaRad);
+
+    if (rx < -0.02 || rx > 1.02) return { x: px, y: py };
+
+    const clampX = Math.max(0, Math.min(1, rx));
+    const yc = nacaCamberLine(clampX);
+    const yt = nacaThickness(clampX);
+    const y_upper = yc + yt;
+    const y_lower = yc - yt;
+
+    if (ry < y_upper && ry > y_lower) {
+      // Inside — project to whichever surface via camber line
+      if (ry >= yc) {
+        ry = y_upper + 0.008;
+      } else {
+        ry = y_lower - 0.008;
+      }
+      // Nudge downstream to prevent re-entry on next frame
+      rx += 0.008;
+      const newX = (rx - 0.25) * Math.cos(aoaRad) - ry * Math.sin(aoaRad) + 0.25;
+      const newY = (rx - 0.25) * Math.sin(aoaRad) + ry * Math.cos(aoaRad);
+      return { x: newX, y: newY };
+    }
+    return { x: px, y: py };
   }
 
   /* ── Particle system ── */
@@ -171,10 +262,7 @@ const AirfoilSim = (() => {
     ctx.fillStyle = '#2b2b2b';
     ctx.fillRect(0, 0, W, H);
 
-    const profile = getAirfoilPoints(20);
-
     if (visualizationMode === 'particles') {
-      // Draw streamlines (particles)
       particles.forEach((p, i) => {
         const vel = flowVelocity(p.x, p.y, aoaRad);
         const speed = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
@@ -183,26 +271,18 @@ const AirfoilSim = (() => {
         p.y += vel.vy * 0.008;
         p.age++;
 
-        // Reset if out of bounds or too old
         if (p.x > 2 || p.x < -1 || p.y > 2 || p.y < -2 || p.age > p.maxAge) {
           const np = resetParticle(W, H);
           p.x = np.x; p.y = np.y; p.age = 0; p.maxAge = np.maxAge;
         }
 
-        // Check if inside airfoil — skip drawing
-        const rotPx = (p.x - 0.25) * Math.cos(-aoaRad) + (p.y) * Math.sin(-aoaRad) + 0.25;
-        const rotPy = -(p.x - 0.25) * Math.sin(-aoaRad) + (p.y) * Math.cos(-aoaRad);
-
-        if (rotPx >= 0 && rotPx <= 1) {
-          const idx = Math.floor(rotPx * 20);
-          const ub = profile.upper[Math.min(idx, 20)];
-          const lb = profile.lower[Math.min(idx, 20)];
-          if (ub && lb && rotPy < ub.y && rotPy > lb.y) return; // inside airfoil
-        }
+        // Project out of airfoil body
+        const proj = projectOutOfAirfoil(p.x, p.y, aoaRad);
+        p.x = proj.x;
+        p.y = proj.y;
 
         const screenPos = toScreen(p.x, p.y, W, H, scale, offsetX, offsetY, 0);
 
-        // Color based on speed
         const speedNorm = Math.min(speed / (PARTICLE_SPEED * airspeed * 2), 1);
         const r = Math.floor(232 * speedNorm + 60 * (1 - speedNorm));
         const g = Math.floor(168 * speedNorm + 60 * (1 - speedNorm));
@@ -215,7 +295,6 @@ const AirfoilSim = (() => {
         ctx.fill();
       });
     } else {
-      // Draw continuous streamlines (Airflow lines)
       const numLines = 45;
       for (let j = 0; j < numLines; j++) {
         let px = -0.5;
@@ -231,25 +310,11 @@ const AirfoilSim = (() => {
 
           if (px > 2.0 || px < -0.8 || py > 2.0 || py < -2.0) break;
 
-          // Check inside airfoil
-          const rotPx = (px - 0.25) * Math.cos(-aoaRad) + py * Math.sin(-aoaRad) + 0.25;
-          const rotPy = -(px - 0.25) * Math.sin(-aoaRad) + py * Math.cos(-aoaRad);
-          let inside = false;
-          if (rotPx >= 0 && rotPx <= 1) {
-            const idx = Math.floor(rotPx * 20);
-            const ub = profile.upper[Math.min(idx, 20)];
-            const lb = profile.lower[Math.min(idx, 20)];
-            if (ub && lb && rotPy < ub.y && rotPy > lb.y) {
-              inside = true;
-            }
-          }
+          const proj = projectOutOfAirfoil(px, py, aoaRad);
+          px = proj.x;
+          py = proj.y;
 
           const screenPos = toScreen(px, py, W, H, scale, offsetX, offsetY, 0);
-
-          if (inside) {
-            lastScreen = null;
-            continue;
-          }
 
           if (lastScreen) {
             ctx.beginPath();
